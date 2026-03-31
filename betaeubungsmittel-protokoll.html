@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Betäubungsmittelprotokoll</title>
+  <style>
+    /* Minimal base styles — Bootstrap wird später übernehmen */
+    body { font-family: sans-serif; margin: 2rem; }
+    h1, h2, h3 { margin-top: 1.5rem; }
+    form { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; max-width: 500px; }
+    label { display: block; margin-top: 0.5rem; font-weight: bold; }
+    input, select { width: 100%; padding: 0.3rem; margin-top: 0.2rem; box-sizing: border-box; }
+    button { margin-top: 0.8rem; padding: 0.4rem 1rem; cursor: pointer; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #aaa; padding: 0.4rem 0.8rem; text-align: left; }
+    th { background: #eee; }
+    .error { color: red; margin-top: 0.5rem; font-size: 0.9rem; }
+    .bestand-tabelle { margin-top: 2rem; }
+    tr.zugang td:first-child { border-left: 4px solid green; }
+    tr.entnahme td:first-child { border-left: 4px solid red; }
+  </style>
+</head>
+<body>
+
+<h1>Betäubungsmittelprotokoll</h1>
+<p>Lückenlose Dokumentation von Zugängen und Entnahmen.</p>
+
+<!-- ================================================================
+     ZUGANG-FORMULAR
+     ================================================================ -->
+<h2>Zugang buchen</h2>
+<form id="formZugang" novalidate>
+  <label for="zugangMedikament">Medikament</label>
+  <select id="zugangMedikament" required>
+    <option value="">-- bitte wählen --</option>
+  </select>
+
+  <label for="zugangMenge">Menge (Einheiten)</label>
+  <input type="number" id="zugangMenge" min="1" step="1" required placeholder="z. B. 10" />
+
+  <label for="zugangErfasser">Erfasser (Benutzername)</label>
+  <input type="text" id="zugangErfasser" required placeholder="z. B. m.mustermann" />
+
+  <div class="error" id="zugangFehler"></div>
+  <button type="submit">Zugang erfassen</button>
+</form>
+
+<!-- ================================================================
+     ENTNAHME-FORMULAR
+     ================================================================ -->
+<h2>Entnahme buchen</h2>
+<form id="formEntnahme" novalidate>
+  <label for="entnahmeMedikament">Medikament</label>
+  <select id="entnahmeMedikament" required>
+    <option value="">-- bitte wählen --</option>
+  </select>
+
+  <label for="entnahmeMenge">Menge (Einheiten)</label>
+  <input type="number" id="entnahmeMenge" min="1" step="1" required placeholder="z. B. 2" />
+
+  <label for="entnahmeErfasser">Erfasser (Benutzername)</label>
+  <input type="text" id="entnahmeErfasser" required placeholder="z. B. s.schmidt" />
+
+  <div class="error" id="entnahmeFehler"></div>
+  <button type="submit">Entnahme erfassen</button>
+</form>
+
+<!-- ================================================================
+     AKTUELLER BESTAND
+     ================================================================ -->
+<div class="bestand-tabelle">
+  <h2>Aktueller Bestand</h2>
+  <table id="bestandTabelle">
+    <thead>
+      <tr>
+        <th>Medikament</th>
+        <th>Bestand (Einheiten)</th>
+      </tr>
+    </thead>
+    <tbody id="bestandBody">
+      <!-- wird dynamisch befüllt -->
+    </tbody>
+  </table>
+</div>
+
+<!-- ================================================================
+     PROTOKOLLTABELLE
+     ================================================================ -->
+<h2>Protokoll aller Bewegungen</h2>
+<table id="protokollTabelle">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Datum</th>
+      <th>Uhrzeit</th>
+      <th>Medikament</th>
+      <th>Bewegungstyp</th>
+      <th>Menge</th>
+      <th>Bestand nach Buchung</th>
+      <th>Erfasser</th>
+    </tr>
+  </thead>
+  <tbody id="protokollBody">
+    <!-- wird dynamisch befüllt -->
+  </tbody>
+</table>
+
+<script>
+  // ================================================================
+  // Stammdaten: Liste der kontrollierten Substanzen
+  // In einem echten System käme diese Liste aus der Datenbank.
+  // ================================================================
+  const MEDIKAMENTE = [
+    "Morphin 10 mg/ml Inj.",
+    "Fentanyl 0,05 mg/ml Inj.",
+    "Oxycodon 10 mg Kps.",
+    "Midazolam 5 mg/ml Inj.",
+    "Ketamin 50 mg/ml Inj.",
+    "Tramadol 100 mg Inj.",
+  ];
+
+  // ================================================================
+  // Applikationszustand
+  // Bestand: { [medikamentName]: number }
+  // Protokoll: Array von Eintragobjekten
+  // ================================================================
+  const bestand = {};
+  const protokoll = [];
+
+  // Bestand für jedes Medikament mit 0 initialisieren
+  MEDIKAMENTE.forEach((med) => { bestand[med] = 0; });
+
+  // ================================================================
+  // Hilfsfunktionen
+  // ================================================================
+
+  /** Gibt das aktuelle Datum als DD.MM.YYYY zurück */
+  function heuteDatum() {
+    const d = new Date();
+    return d.toLocaleDateString("de-DE", {
+      day: "2-digit", month: "2-digit", year: "numeric"
+    });
+  }
+
+  /** Gibt die aktuelle Uhrzeit als HH:MM:SS zurück */
+  function jetztUhrzeit() {
+    return new Date().toLocaleTimeString("de-DE", {
+      hour: "2-digit", minute: "2-digit", second: "2-digit"
+    });
+  }
+
+  /** Füllt ein <select>-Element mit der Medikamentenliste */
+  function fuelleMedikamentSelect(selectId) {
+    const sel = document.getElementById(selectId);
+    MEDIKAMENTE.forEach((med) => {
+      const opt = document.createElement("option");
+      opt.value = med;
+      opt.textContent = med;
+      sel.appendChild(opt);
+    });
+  }
+
+  // ================================================================
+  // UI-Aktualisierung
+  // ================================================================
+
+  /** Aktualisiert die Bestandstabelle */
+  function aktualisiereBestandTabelle() {
+    const tbody = document.getElementById("bestandBody");
+    tbody.innerHTML = "";
+    MEDIKAMENTE.forEach((med) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${med}</td><td>${bestand[med]}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  /** Fügt eine neue Zeile in die Protokolltabelle ein */
+  function fuegeProtokollZeileHinzu(eintrag, index) {
+    const tbody = document.getElementById("protokollBody");
+    const tr = document.createElement("tr");
+    tr.classList.add(eintrag.typ === "Zugang" ? "zugang" : "entnahme");
+    tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${eintrag.datum}</td>
+      <td>${eintrag.uhrzeit}</td>
+      <td>${eintrag.medikament}</td>
+      <td>${eintrag.typ}</td>
+      <td>${eintrag.menge}</td>
+      <td>${eintrag.bestandNach}</td>
+      <td>${eintrag.erfasser}</td>
+    `;
+    // Neueste Einträge oben anzeigen
+    tbody.insertBefore(tr, tbody.firstChild);
+  }
+
+  // ================================================================
+  // Kernlogik: Buchung verarbeiten
+  // typ: "Zugang" | "Entnahme"
+  // ================================================================
+  function buchungVerarbeiten(typ, medikament, menge, erfasser) {
+    const mengeInt = parseInt(menge, 10);
+
+    // Validierung: negative Entnahme verhindern
+    if (typ === "Entnahme" && bestand[medikament] < mengeInt) {
+      return {
+        erfolg: false,
+        fehler: `Nicht genug Bestand. Aktueller Bestand: ${bestand[medikament]} Einheit(en).`
+      };
+    }
+
+    // Bestand anpassen
+    if (typ === "Zugang") {
+      bestand[medikament] += mengeInt;
+    } else {
+      bestand[medikament] -= mengeInt;
+    }
+
+    // Protokolleintrag erstellen
+    const eintrag = {
+      datum: heuteDatum(),
+      uhrzeit: jetztUhrzeit(),
+      medikament,
+      typ,
+      menge: mengeInt,
+      bestandNach: bestand[medikament],
+      erfasser: erfasser.trim(),
+    };
+    protokoll.push(eintrag);
+
+    // UI aktualisieren
+    fuegeProtokollZeileHinzu(eintrag, protokoll.length - 1);
+    aktualisiereBestandTabelle();
+
+    return { erfolg: true };
+  }
+
+  // ================================================================
+  // Formular-Validierung (gemeinsame Logik)
+  // ================================================================
+  function validiereFormular(medikament, menge, erfasser, fehlerId) {
+    const fehlerDiv = document.getElementById(fehlerId);
+    fehlerDiv.textContent = "";
+
+    if (!medikament) {
+      fehlerDiv.textContent = "Bitte ein Medikament auswählen.";
+      return false;
+    }
+    const mengeInt = parseInt(menge, 10);
+    if (!menge || isNaN(mengeInt) || mengeInt < 1) {
+      fehlerDiv.textContent = "Bitte eine gültige Menge (mind. 1) eingeben.";
+      return false;
+    }
+    if (!erfasser || erfasser.trim() === "") {
+      fehlerDiv.textContent = "Bitte einen Erfasser angeben.";
+      return false;
+    }
+    return true;
+  }
+
+  // ================================================================
+  // Event-Handler: Zugang
+  // ================================================================
+  document.getElementById("formZugang").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const med = document.getElementById("zugangMedikament").value;
+    const menge = document.getElementById("zugangMenge").value;
+    const erfasser = document.getElementById("zugangErfasser").value;
+
+    if (!validiereFormular(med, menge, erfasser, "zugangFehler")) return;
+
+    const result = buchungVerarbeiten("Zugang", med, menge, erfasser);
+    if (!result.erfolg) {
+      document.getElementById("zugangFehler").textContent = result.fehler;
+      return;
+    }
+
+    // Formular zurücksetzen
+    this.reset();
+  });
+
+  // ================================================================
+  // Event-Handler: Entnahme
+  // ================================================================
+  document.getElementById("formEntnahme").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const med = document.getElementById("entnahmeMedikament").value;
+    const menge = document.getElementById("entnahmeMenge").value;
+    const erfasser = document.getElementById("entnahmeErfasser").value;
+
+    if (!validiereFormular(med, menge, erfasser, "entnahmeFehler")) return;
+
+    const result = buchungVerarbeiten("Entnahme", med, menge, erfasser);
+    if (!result.erfolg) {
+      document.getElementById("entnahmeFehler").textContent = result.fehler;
+      return;
+    }
+
+    // Formular zurücksetzen
+    this.reset();
+  });
+
+  // ================================================================
+  // Initialisierung
+  // ================================================================
+  fuelleMedikamentSelect("zugangMedikament");
+  fuelleMedikamentSelect("entnahmeMedikament");
+  aktualisiereBestandTabelle();
+</script>
+
+</body>
+</html>
