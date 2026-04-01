@@ -5,42 +5,96 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Betäubungsmittelprotokoll</title>
   <style>
+    /* ── Basis ── */
+    * { box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
       font-size: 14px;
-      margin: 2rem 2.5rem;
+      margin: 0;
+      padding: 0;
       color: #111;
       background: #fff;
     }
 
-    /* ── Kopfbereich ── */
-    .titel { font-weight: bold; margin-bottom: 0.1rem; }
-    .untertitel { margin: 0 0 0.2rem 0; font-size: 13px; }
-    .quelle { margin: 0 0 1.5rem 0; font-size: 13px; }
+    /* ── Layout-Wrapper ── */
+    .seite { display: none; padding: 1.5rem 2rem; }
+    .seite.aktiv { display: block; }
 
-    /* ── Erfassungsbereich (Formular-Zeile) ── */
-    .erfassung {
+    /* ── Kopf ── */
+    .kopf { border-bottom: 2px solid #222; padding-bottom: 0.5rem; margin-bottom: 1rem; }
+    .kopf h1 { font-size: 16px; font-weight: bold; margin: 0 0 2px 0; }
+    .kopf p  { margin: 0; font-size: 12px; color: #555; }
+
+    /* ── Zurück-Link ── */
+    .zurueck {
+      display: inline-block;
+      margin-bottom: 1rem;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: underline;
+      color: #111;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .zurueck:hover { color: #444; }
+
+    /* ── Medikamentenliste (Übersicht) ── */
+    .med-liste-wrapper {
+      max-height: 340px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      margin-bottom: 1.2rem;
+    }
+    table.med-liste {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table.med-liste thead th {
+      background: #f5f5f5;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 5px 10px;
+      text-align: left;
+      border-bottom: 1px solid #bbb;
+      position: sticky;
+      top: 0;
+    }
+    table.med-liste tbody tr {
+      border-bottom: 1px solid #e8e8e8;
+      cursor: pointer;
+    }
+    table.med-liste tbody tr:hover { background: #f9f9f9; }
+    table.med-liste td { padding: 6px 10px; }
+    table.med-liste td.med-name { text-decoration: underline; }
+    table.med-liste td.bestand { text-align: right; padding-right: 16px; }
+    .kein-eintrag { padding: 10px; color: #999; font-style: italic; font-size: 13px; }
+
+    /* ── Neues Medikament Formular ── */
+    .neu-med-form {
+      border-top: 1px solid #ccc;
+      padding-top: 0.8rem;
+    }
+    .neu-med-form h2 { font-size: 13px; font-weight: bold; margin: 0 0 0.5rem 0; }
+    .inline-form {
       display: flex;
-      gap: 0.6rem;
+      gap: 0.5rem;
       align-items: flex-end;
       flex-wrap: wrap;
-      margin-bottom: 1.5rem;
-      border-top: 1px solid #ccc;
-      padding-top: 1rem;
     }
-    .erfassung .feld { display: flex; flex-direction: column; font-size: 12px; }
-    .erfassung .feld label { font-weight: bold; margin-bottom: 2px; }
-    .erfassung .feld input,
-    .erfassung .feld select {
-      padding: 3px 5px;
+    .inline-form .feld { display: flex; flex-direction: column; font-size: 12px; }
+    .inline-form .feld label { font-weight: bold; margin-bottom: 2px; }
+    .inline-form .feld input {
+      padding: 3px 6px;
       border: 1px solid #999;
       font-size: 13px;
-      min-width: 110px;
+      min-width: 160px;
     }
-    .erfassung .feld.schmal input { min-width: 60px; }
-    .btn-gruppe { display: flex; gap: 0.4rem; align-items: flex-end; }
+    .inline-form .feld.schmal input { min-width: 70px; }
+
+    /* ── Buttons ── */
     .btn {
-      padding: 4px 12px;
+      padding: 4px 14px;
       border: 1px solid #555;
       background: #fff;
       cursor: pointer;
@@ -48,6 +102,8 @@
       white-space: nowrap;
     }
     .btn:hover { background: #f0f0f0; }
+
+    /* ── Fehlermeldung ── */
     .fehler {
       color: red;
       font-size: 12px;
@@ -55,193 +111,439 @@
       width: 100%;
     }
 
-    /* ── Protokolltabelle (Spitex-Stil) ── */
-    table {
-      border-collapse: collapse;
-      width: 100%;
+    /* ── Detailansicht ── */
+    .detail-kopf {
+      margin-bottom: 1rem;
     }
-    thead tr {
-      border-bottom: 1px solid #555;
-    }
-    th {
+    .detail-kopf h2 {
+      font-size: 15px;
       font-weight: bold;
+      margin: 0 0 2px 0;
+    }
+    .detail-kopf .bestand-info {
       font-size: 13px;
-      padding: 4px 10px 4px 0;
-      text-align: left;
-      white-space: nowrap;
+      color: #333;
     }
-    td {
-      padding: 5px 10px 5px 0;
-      font-size: 13px;
-      border-bottom: 1px solid #ddd;
-      vertical-align: middle;
-    }
-    td.med-name {
-      text-decoration: underline;
-    }
-    td.zahl {
-      text-align: center;
-    }
-    th.zahl {
-      text-align: center;
-    }
-    tr:last-child td { border-bottom: none; }
 
-    /* ── leer-Platzhalter ── */
-    .leer { color: #aaa; font-style: italic; font-size: 12px; }
+    /* ── Buchungszeile ── */
+    .buchung-bereich {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .buchung-box {
+      border: 1px solid #ccc;
+      padding: 0.7rem 1rem;
+      min-width: 220px;
+    }
+    .buchung-box h3 {
+      font-size: 13px;
+      font-weight: bold;
+      margin: 0 0 0.5rem 0;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 4px;
+    }
+
+    /* ── Protokolltabelle (Spitex-Stil) ── */
+    .protokoll-wrapper {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+    }
+    table.protokoll {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table.protokoll thead th {
+      background: #f5f5f5;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 5px 10px;
+      text-align: left;
+      border-bottom: 1px solid #bbb;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+    }
+    table.protokoll th.zahl,
+    table.protokoll td.zahl {
+      text-align: right;
+    }
+    table.protokoll td {
+      padding: 5px 10px;
+      border-bottom: 1px solid #e8e8e8;
+      font-size: 13px;
+    }
+    table.protokoll tbody tr:last-child td { border-bottom: none; }
+    table.protokoll td.typ-zugang  { color: #1a7a1a; font-weight: bold; }
+    table.protokoll td.typ-entnahme { color: #a00; font-weight: bold; }
   </style>
 </head>
 <body>
 
-<p class="titel">Betäubungsmittelprotokoll:</p>
-<p class="untertitel">Abgelegt in den Vitaldaten</p>
-<p class="quelle">Bsp. Formular von Spitex Zürisee:</p>
+<!-- ================================================================
+     SEITE 1: MEDIKAMENTENÜBERSICHT
+     ================================================================ -->
+<div id="seiteUebersicht" class="seite aktiv">
+
+  <div class="kopf">
+    <h1>Betäubungsmittelprotokoll</h1>
+    <p>Medikamentenübersicht des Patienten</p>
+  </div>
+
+  <!-- Scrollbare Medikamentenliste -->
+  <div class="med-liste-wrapper" id="medListeWrapper">
+    <table class="med-liste" id="medListe">
+      <thead>
+        <tr>
+          <th>Medikament</th>
+          <th style="text-align:right; padding-right:16px;">Aktueller Bestand</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="medListeBody">
+        <!-- dynamisch befüllt -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Neues Medikament hinzufügen -->
+  <div class="neu-med-form">
+    <h2>Neues Betäubungsmittel anlegen</h2>
+    <div class="inline-form">
+      <div class="feld">
+        <label for="neuName">Bezeichnung</label>
+        <input type="text" id="neuName" placeholder="z. B. Morphin 10 mg/ml Inj." />
+      </div>
+      <div class="feld schmal">
+        <label for="neuStartbestand">Startbestand (optional)</label>
+        <input type="number" id="neuStartbestand" min="0" step="1" placeholder="0" />
+      </div>
+      <button class="btn" onclick="medikamentHinzufuegen()">Hinzufügen</button>
+      <div class="fehler" id="neuFehler"></div>
+    </div>
+  </div>
+
+</div><!-- /seiteUebersicht -->
+
 
 <!-- ================================================================
-     ERFASSUNGSZEILE
+     SEITE 2: DETAILANSICHT (Protokoll eines Medikaments)
      ================================================================ -->
-<div class="erfassung">
+<div id="seiteDetail" class="seite">
 
-  <div class="feld">
-    <label for="fMedikament">Medikament</label>
-    <select id="fMedikament">
-      <option value="">-- wählen --</option>
-    </select>
+  <button class="zurueck" onclick="zeigeUebersicht()">← Zurück zur Übersicht</button>
+
+  <div class="kopf">
+    <h1>Betäubungsmittelprotokoll</h1>
+    <p>Abgelegt in den Vitaldaten &nbsp;|&nbsp; Bsp. Formular Spitex</p>
   </div>
 
-  <div class="feld schmal">
-    <label for="fMenge">Menge</label>
-    <input type="number" id="fMenge" min="1" step="1" placeholder="z. B. 2" />
+  <div class="detail-kopf">
+    <h2 id="detailTitel">—</h2>
+    <span class="bestand-info">Aktueller Bestand: <strong id="detailBestand">—</strong> Einheiten</span>
   </div>
 
-  <div class="feld">
-    <label for="fErfasser">Erfasser</label>
-    <input type="text" id="fErfasser" placeholder="z. B. m.muster" style="min-width:100px;" />
+  <!-- Buchungsformulare -->
+  <div class="buchung-bereich">
+
+    <!-- Zugang -->
+    <div class="buchung-box">
+      <h3>+ Zugang erfassen</h3>
+      <div class="inline-form" style="flex-direction:column; gap:0.4rem;">
+        <div class="feld">
+          <label for="zugMenge">Menge</label>
+          <input type="number" id="zugMenge" min="1" step="1" placeholder="z. B. 10" style="min-width:0;" />
+        </div>
+        <div class="feld">
+          <label for="zugErfasser">Erfasser</label>
+          <input type="text" id="zugErfasser" placeholder="z. B. m.muster" style="min-width:0;" />
+        </div>
+        <button class="btn" onclick="buchen('Zugang')">Zugang buchen</button>
+        <div class="fehler" id="zugFehler"></div>
+      </div>
+    </div>
+
+    <!-- Entnahme -->
+    <div class="buchung-box">
+      <h3>− Entnahme erfassen</h3>
+      <div class="inline-form" style="flex-direction:column; gap:0.4rem;">
+        <div class="feld">
+          <label for="entMenge">Menge</label>
+          <input type="number" id="entMenge" min="1" step="1" placeholder="z. B. 2" style="min-width:0;" />
+        </div>
+        <div class="feld">
+          <label for="entErfasser">Erfasser</label>
+          <input type="text" id="entErfasser" placeholder="z. B. s.schmidt" style="min-width:0;" />
+        </div>
+        <button class="btn" onclick="buchen('Entnahme')">Entnahme buchen</button>
+        <div class="fehler" id="entFehler"></div>
+      </div>
+    </div>
+
+  </div><!-- /buchung-bereich -->
+
+  <!-- Protokolltabelle -->
+  <div class="protokoll-wrapper">
+    <table class="protokoll">
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Uhrzeit</th>
+          <th>Bewegungstyp</th>
+          <th class="zahl">Menge</th>
+          <th class="zahl">Bestand nach Buchung</th>
+          <th>Erfasser</th>
+        </tr>
+      </thead>
+      <tbody id="protokollBody">
+        <tr id="protokollLeer">
+          <td colspan="6" style="color:#999; font-style:italic; font-size:12px;">
+            Noch keine Buchungen vorhanden.
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 
-  <div class="btn-gruppe">
-    <button class="btn" id="btnZugang" onclick="buchen('Zugang')">+ Zugang</button>
-    <button class="btn" id="btnEntnahme" onclick="buchen('Entnahme')">− Entnahme</button>
-  </div>
+</div><!-- /seiteDetail -->
 
-  <div class="fehler" id="fehlerMsg"></div>
-</div>
-
-<!-- ================================================================
-     PROTOKOLLTABELLE
-     ================================================================ -->
-<table id="protokollTabelle">
-  <thead>
-    <tr>
-      <th>Erhoben am:</th>
-      <th>Medikament:</th>
-      <th class="zahl">Eingang:</th>
-      <th class="zahl">Anzahl vor der Entnahme:</th>
-      <th class="zahl">Entnahme:</th>
-      <th class="zahl">Anzahl nach der Entnahme:</th>
-      <th>Erfasser:</th>
-    </tr>
-  </thead>
-  <tbody id="protokollBody">
-    <tr id="leerZeile">
-      <td colspan="7" class="leer">Noch keine Einträge vorhanden.</td>
-    </tr>
-  </tbody>
-</table>
 
 <script>
   // ================================================================
-  // Stammdaten
+  // Datenmodell
+  // medikamente: Array von { id, name, bestand, protokoll[] }
+  // protokoll-Eintrag: { datum, uhrzeit, typ, menge, bestandNach, erfasser }
   // ================================================================
-  const MEDIKAMENTE = [
-    "Fentanyl 0,05 mg/ml Inj.",
-    "Morphin 10 mg/ml Inj.",
-    "Oxycodon 10 mg Kps.",
-    "Midazolam 5 mg/ml Inj.",
-    "Ketamin 50 mg/ml Inj.",
-    "Tramadol 100 mg Inj.",
+  let medikamente = [];
+  let aktiveMedId = null;   // ID des aktuell geöffneten Medikaments
+  let naechsteId  = 1;
+
+  // ── Beispieldaten (realitätsnah vorbefüllt) ──────────────────────
+  const BEISPIELE = [
+    { name: "Fentanyl 0,05 mg/ml Inj.", startbestand: 10 },
+    { name: "Morphin 10 mg/ml Inj.",    startbestand: 6  },
+    { name: "Oxycodon 10 mg Kps.",      startbestand: 8  },
   ];
-
-  // Bestand je Medikament
-  const bestand = {};
-  MEDIKAMENTE.forEach(m => bestand[m] = 0);
-
-  // Dropdown befüllen
-  const sel = document.getElementById("fMedikament");
-  MEDIKAMENTE.forEach(m => {
-    const o = document.createElement("option");
-    o.value = o.textContent = m;
-    sel.appendChild(o);
-  });
+  BEISPIELE.forEach(b => medikamentAnlegen(b.name, b.startbestand));
 
   // ================================================================
-  // Datum-Hilfsfunktion
+  // Hilfsfunktionen
   // ================================================================
-  function datumHeute() {
+  function heuteDatum() {
     const d = new Date();
     return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+  }
+  function jetztUhrzeit() {
+    return new Date().toLocaleTimeString("de-DE", {
+      hour: "2-digit", minute: "2-digit", second: "2-digit"
+    });
+  }
+  function medById(id) {
+    return medikamente.find(m => m.id === id);
+  }
+
+  // ================================================================
+  // Medikament anlegen
+  // ================================================================
+  function medikamentAnlegen(name, startbestand) {
+    medikamente.push({
+      id:        naechsteId++,
+      name:      name.trim(),
+      bestand:   startbestand,
+      protokoll: startbestand > 0
+        ? [{
+            datum:       heuteDatum(),
+            uhrzeit:     jetztUhrzeit(),
+            typ:         "Zugang",
+            menge:       startbestand,
+            bestandNach: startbestand,
+            erfasser:    "System"
+          }]
+        : []
+    });
+  }
+
+  function medikamentHinzufuegen() {
+    const fehlerDiv = document.getElementById("neuFehler");
+    fehlerDiv.textContent = "";
+
+    const name        = document.getElementById("neuName").value.trim();
+    const startRaw    = document.getElementById("neuStartbestand").value;
+    const startbestand = startRaw !== "" ? parseInt(startRaw, 10) : 0;
+
+    if (!name) {
+      fehlerDiv.textContent = "Bitte einen Medikamentennamen eingeben.";
+      return;
+    }
+    if (isNaN(startbestand) || startbestand < 0) {
+      fehlerDiv.textContent = "Startbestand muss 0 oder grösser sein.";
+      return;
+    }
+    // Duplikat prüfen
+    if (medikamente.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+      fehlerDiv.textContent = "Dieses Medikament ist bereits in der Liste.";
+      return;
+    }
+
+    medikamentAnlegen(name, startbestand);
+    renderMedListe();
+
+    document.getElementById("neuName").value        = "";
+    document.getElementById("neuStartbestand").value = "";
+  }
+
+  // ================================================================
+  // Rendern: Medikamentenliste
+  // ================================================================
+  function renderMedListe() {
+    const tbody = document.getElementById("medListeBody");
+    tbody.innerHTML = "";
+
+    if (medikamente.length === 0) {
+      tbody.innerHTML =
+        `<tr><td colspan="3" class="kein-eintrag">Keine Medikamente vorhanden.</td></tr>`;
+      return;
+    }
+
+    medikamente.forEach(med => {
+      const tr = document.createElement("tr");
+      tr.onclick = () => zeigeDetail(med.id);
+      tr.innerHTML = `
+        <td class="med-name">${med.name}</td>
+        <td class="bestand">${med.bestand}</td>
+        <td style="color:#777; font-size:12px;">▶ öffnen</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ================================================================
+  // Navigation: Detailansicht
+  // ================================================================
+  function zeigeDetail(medId) {
+    aktiveMedId = medId;
+    const med = medById(medId);
+
+    document.getElementById("detailTitel").textContent  = med.name;
+    document.getElementById("detailBestand").textContent = med.bestand;
+
+    renderProtokoll(med);
+
+    // Fehlermeldungen leeren, Felder zurücksetzen
+    ["zugMenge","zugErfasser","entMenge","entErfasser"].forEach(id => {
+      document.getElementById(id).value = "";
+    });
+    ["zugFehler","entFehler"].forEach(id => {
+      document.getElementById(id).textContent = "";
+    });
+
+    document.getElementById("seiteUebersicht").classList.remove("aktiv");
+    document.getElementById("seiteDetail").classList.add("aktiv");
+    window.scrollTo(0, 0);
+  }
+
+  function zeigeUebersicht() {
+    aktiveMedId = null;
+    renderMedListe();
+    document.getElementById("seiteDetail").classList.remove("aktiv");
+    document.getElementById("seiteUebersicht").classList.add("aktiv");
+    window.scrollTo(0, 0);
+  }
+
+  // ================================================================
+  // Rendern: Protokolltabelle
+  // ================================================================
+  function renderProtokoll(med) {
+    const tbody = document.getElementById("protokollBody");
+    tbody.innerHTML = "";
+
+    if (med.protokoll.length === 0) {
+      tbody.innerHTML = `
+        <tr id="protokollLeer">
+          <td colspan="6" style="color:#999; font-style:italic; font-size:12px;">
+            Noch keine Buchungen vorhanden.
+          </td>
+        </tr>`;
+      return;
+    }
+
+    // Neueste oben
+    [...med.protokoll].reverse().forEach(e => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${e.datum}</td>
+        <td>${e.uhrzeit}</td>
+        <td class="typ-${e.typ === "Zugang" ? "zugang" : "entnahme"}">${e.typ}</td>
+        <td class="zahl">${e.menge}</td>
+        <td class="zahl">${e.bestandNach}</td>
+        <td>${e.erfasser}</td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 
   // ================================================================
   // Buchung ausführen
   // ================================================================
   function buchen(typ) {
-    const fehlerDiv = document.getElementById("fehlerMsg");
+    const istZugang  = typ === "Zugang";
+    const mengeId    = istZugang ? "zugMenge"    : "entMenge";
+    const erfasserId = istZugang ? "zugErfasser" : "entErfasser";
+    const fehlerId   = istZugang ? "zugFehler"   : "entFehler";
+
+    const fehlerDiv  = document.getElementById(fehlerId);
     fehlerDiv.textContent = "";
 
-    const med      = document.getElementById("fMedikament").value;
-    const mengeRaw = document.getElementById("fMenge").value;
-    const erfasser = document.getElementById("fErfasser").value.trim();
+    const mengeRaw = document.getElementById(mengeId).value;
+    const erfasser = document.getElementById(erfasserId).value.trim();
     const menge    = parseInt(mengeRaw, 10);
 
     // Validierung
-    if (!med) { fehlerDiv.textContent = "Bitte ein Medikament wählen."; return; }
     if (!mengeRaw || isNaN(menge) || menge < 1) {
       fehlerDiv.textContent = "Bitte eine gültige Menge (mind. 1) eingeben.";
       return;
     }
-    if (!erfasser) { fehlerDiv.textContent = "Bitte den Erfasser angeben."; return; }
-
-    if (typ === "Entnahme" && bestand[med] < menge) {
-      fehlerDiv.textContent =
-        `Nicht genug Bestand. Aktueller Bestand: ${bestand[med]} Einheit(en).`;
+    if (!erfasser) {
+      fehlerDiv.textContent = "Bitte den Erfasser angeben.";
       return;
     }
 
-    const bestandVor = bestand[med];
+    const med = medById(aktiveMedId);
 
-    // Bestand anpassen
-    if (typ === "Zugang") {
-      bestand[med] += menge;
-    } else {
-      bestand[med] -= menge;
+    if (!istZugang && med.bestand < menge) {
+      fehlerDiv.textContent =
+        `Nicht genug Bestand. Aktueller Bestand: ${med.bestand} Einheit(en).`;
+      return;
     }
 
-    const bestandNach = bestand[med];
+    // Bestand anpassen
+    med.bestand += istZugang ? menge : -menge;
 
-    // Zeile einfügen
-    const tbody = document.getElementById("protokollBody");
-    const leer = document.getElementById("leerZeile");
-    if (leer) leer.remove();
+    // Protokolleintrag
+    med.protokoll.push({
+      datum:       heuteDatum(),
+      uhrzeit:     jetztUhrzeit(),
+      typ,
+      menge,
+      bestandNach: med.bestand,
+      erfasser,
+    });
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${datumHeute()}</td>
-      <td class="med-name">${med}</td>
-      <td class="zahl">${typ === "Zugang"   ? menge : ""}</td>
-      <td class="zahl">${typ === "Entnahme" ? bestandVor : ""}</td>
-      <td class="zahl">${typ === "Entnahme" ? menge : ""}</td>
-      <td class="zahl">${typ === "Entnahme" ? bestandNach : bestandNach}</td>
-      <td>${erfasser}</td>
-    `;
-    // Neueste oben
-    tbody.insertBefore(tr, tbody.firstChild);
+    // UI aktualisieren
+    document.getElementById("detailBestand").textContent = med.bestand;
+    renderProtokoll(med);
 
-    // Formular zurücksetzen
-    document.getElementById("fMedikament").value = "";
-    document.getElementById("fMenge").value = "";
-    document.getElementById("fErfasser").value = "";
+    // Felder leeren
+    document.getElementById(mengeId).value    = "";
+    document.getElementById(erfasserId).value = "";
   }
+
+  // ================================================================
+  // Initialisierung
+  // ================================================================
+  renderMedListe();
 </script>
 
 </body>
