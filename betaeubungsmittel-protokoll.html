@@ -316,6 +316,20 @@
     </span>
   </div>
 
+  <!-- Einheitenumschaltung (nur für Flaschen / Tropfenpräparate) -->
+  <div id="einheitToggleBereich" style="display:none; margin-bottom:0.8rem; font-size:13px;">
+    Dokumentationseinheit wählen: &nbsp;
+    <label style="cursor:pointer;">
+      <input type="radio" name="einheitToggle" id="toggleMl" value="ml"
+             onchange="einheitWechseln('ml')" /> ml
+    </label>
+    &nbsp;&nbsp;
+    <label style="cursor:pointer;">
+      <input type="radio" name="einheitToggle" id="toggleTrpf" value="Trpf"
+             onchange="einheitWechseln('Trpf')" /> Trpf (Tropfen)
+    </label>
+  </div>
+
   <!-- Buchungsformulare -->
   <div class="buchung-bereich">
 
@@ -545,6 +559,30 @@
     document.getElementById("einheitFeld").style.display = "";
   }
 
+  // ================================================================
+  // Einheit wechseln (nur Flasche-Medikamente)
+  // ================================================================
+  function einheitWechseln(neueEinheit) {
+    const med = medById(aktiveMedId);
+    if (!med || med.arzneiform !== "Flasche") return;
+    med.einheit = neueEinheit;
+    aktualisiereEinheitUI(med);
+    // Bestandsanzeige Label aktualisieren
+    document.getElementById("detailEinheit").textContent = neueEinheit;
+  }
+
+  function aktualisiereEinheitUI(med) {
+    const istMl = med.einheit === "ml";
+    ["zugMenge", "entMenge"].forEach(id => {
+      const inp = document.getElementById(id);
+      inp.step        = istMl ? "0.1" : "1";
+      inp.placeholder = istMl ? "z. B. 2.5" : "z. B. 10";
+      inp.value       = "";
+    });
+    document.getElementById("zugMengeEinheit").textContent = med.einheit;
+    document.getElementById("entMengeEinheit").textContent = med.einheit;
+  }
+
   // onblur verzögert schliessen, damit onclick der li noch feuert
   function vorschlaegeSpaeterSchliessen() {
     setTimeout(() => {
@@ -672,15 +710,18 @@
     document.getElementById("detailBestand").textContent     = med.bestand;
     document.getElementById("detailEinheit").textContent     = med.einheit;
 
+    // Einheiten-Toggle: nur für Flasche anzeigen
+    const toggleBereich = document.getElementById("einheitToggleBereich");
+    if (med.arzneiform === "Flasche") {
+      toggleBereich.style.display = "";
+      // Radiobutton auf aktuelle Einheit setzen
+      document.getElementById(med.einheit === "ml" ? "toggleMl" : "toggleTrpf").checked = true;
+    } else {
+      toggleBereich.style.display = "none";
+    }
+
     // Menge-Inputs an Einheit anpassen
-    const istMl = med.einheit === "ml";
-    ["zugMenge", "entMenge"].forEach(id => {
-      const inp = document.getElementById(id);
-      inp.step        = istMl ? "0.1" : "1";
-      inp.placeholder = istMl ? "z. B. 2.5" : "z. B. 2";
-    });
-    document.getElementById("zugMengeEinheit").textContent = med.einheit;
-    document.getElementById("entMengeEinheit").textContent = med.einheit;
+    aktualisiereEinheitUI(med);
 
     renderProtokoll(med);
 
@@ -725,15 +766,17 @@
       return;
     }
 
-    const einheit = med.einheit;
     [...med.protokoll].reverse().forEach(e => {
+      // e.einheit: Einheit zum Zeitpunkt der Buchung (historisch korrekt)
+      // Fallback auf med.einheit für ältere Einträge ohne gespeicherte Einheit
+      const eEinheit = e.einheit || med.einheit;
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${e.datum}</td>
         <td>${e.uhrzeit}</td>
         <td class="typ-${e.typ === "Zugang" ? "zugang" : "entnahme"}">${e.typ}</td>
-        <td class="zahl">${e.menge} ${einheit}</td>
-        <td class="zahl">${e.bestandNach} ${einheit}</td>
+        <td class="zahl">${e.menge} ${eEinheit}</td>
+        <td class="zahl">${e.bestandNach} ${eEinheit}</td>
         <td>${e.erfasser}</td>
       `;
       tbody.appendChild(tr);
@@ -776,6 +819,7 @@
     med.protokoll.push({
       datum:       heuteDatum(),
       uhrzeit:     jetztUhrzeit(),
+      einheit:     med.einheit,   // Einheit zum Zeitpunkt der Buchung festhalten
       typ,
       menge,
       bestandNach: med.bestand,
