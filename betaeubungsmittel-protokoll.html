@@ -169,8 +169,74 @@
       font-size: 13px;
     }
     table.protokoll tbody tr:last-child td { border-bottom: none; }
-    table.protokoll td.typ-zugang   { color: #1a7a1a; font-weight: bold; }
-    table.protokoll td.typ-entnahme { color: #a00;    font-weight: bold; }
+    table.protokoll td.typ-zugang      { color: #1a7a1a; font-weight: bold; }
+    table.protokoll td.typ-entnahme    { color: #a00;    font-weight: bold; }
+    table.protokoll td.typ-storno      { color: #c65000; font-style: italic; }
+    table.protokoll td.typ-unstimmigkeit { color: #7a5500; font-style: italic; }
+
+    /* Stornierte Originalzeile */
+    tr.zeile-storniert td {
+      text-decoration: line-through;
+      color: #aaa;
+      background: #fafafa;
+    }
+    /* Storno-Kompensationseintrag */
+    tr.zeile-storno-komp td { color: #c65000; }
+    tr.zeile-storno-komp td:first-child { border-left: 3px solid #f0ad4e; }
+    /* Unstimmigkeitseintrag */
+    tr.zeile-unstimmigkeit td { background: #fff8e1; }
+    tr.zeile-unstimmigkeit td:first-child { border-left: 3px solid orange; }
+
+    /* Aktions-Spalte in Protokolltabelle */
+    .storno-btn {
+      font-size: 11px;
+      padding: 1px 6px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      background: #fff;
+      color: #a00;
+      white-space: nowrap;
+    }
+    .storno-btn:hover { background: #fff0f0; }
+
+    /* Storno / Unstimmigkeit Formular-Bereiche */
+    .aktion-bereich {
+      border: 1px solid #f0ad4e;
+      background: #fffbf0;
+      padding: 0.8rem 1rem;
+      margin-bottom: 1rem;
+    }
+    .aktion-bereich h4 { margin: 0 0 0.6rem 0; font-size: 13px; color: #c65000; font-weight: bold; }
+    .aktion-bereich textarea, .aktion-bereich input[type="number"] {
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .aktion-bereich .btn-reihe { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+
+    /* Postfach */
+    .postfach-bereich { border-top: 1px solid #ccc; margin-top: 1.5rem; padding-top: 0.8rem; }
+    .postfach-bereich h2 { font-size: 13px; font-weight: bold; margin: 0 0 0.5rem 0; }
+    .postfach-nachricht {
+      border: 1px solid #f0ad4e;
+      background: #fffbf0;
+      padding: 0.5rem 0.8rem;
+      margin-bottom: 0.4rem;
+      font-size: 12px;
+    }
+    .postfach-nachricht.gelesen { border-color: #ddd; background: #fafafa; color: #888; }
+    .postfach-nachricht .nkopf { font-weight: bold; margin-bottom: 3px; font-size: 12px; }
+    .postfach-nachricht .ntext { white-space: pre-line; }
+    .badge-neu {
+      display: inline-block;
+      background: #c65000;
+      color: #fff;
+      font-size: 10px;
+      padding: 1px 5px;
+      margin-left: 5px;
+    }
 
     /* ── Autocomplete-Suche ── */
     .suche-wrapper { position: relative; }
@@ -289,6 +355,17 @@
     </div>
   </div>
 
+  <!-- Postfach / Benachrichtigungen -->
+  <div class="postfach-bereich">
+    <h2>
+      Postfach / Benachrichtigungen
+      <span class="badge-neu" id="postfachBadge" style="display:none;"></span>
+    </h2>
+    <div id="postfachListe">
+      <p style="color:#999; font-size:12px; font-style:italic;">Keine Nachrichten vorhanden.</p>
+    </div>
+  </div>
+
 </div><!-- /seiteUebersicht -->
 
 
@@ -367,6 +444,55 @@
 
   </div><!-- /buchung-bereich -->
 
+  <!-- Storno-Formular (wird eingeblendet wenn ein Eintrag storniert wird) -->
+  <div class="aktion-bereich" id="stornoFormBereich" style="display:none;">
+    <h4>Eintrag stornieren</h4>
+    <p style="font-size:12px; margin:0 0 0.5rem 0;">
+      Der Originaleintrag bleibt sichtbar und wird als <em>storniert</em> markiert.
+      Es wird automatisch ein kompensierender Gegeneintrag erzeugt.
+    </p>
+    <label style="font-size:12px; font-weight:bold;">Begründung (Pflichtfeld)</label>
+    <textarea id="stornoKommentar" rows="2"
+              placeholder="z. B. Falsche Menge erfasst / Doppeleintrag / Falsches Medikament"></textarea>
+    <div class="btn-reihe">
+      <button class="btn" onclick="stornoBestaetigen()">Storno bestätigen</button>
+      <button class="btn" onclick="stornoAbbrechen()">Abbrechen</button>
+    </div>
+    <div class="fehler" id="stornoFehler"></div>
+  </div>
+
+  <!-- Bestandsunstimmigkeit melden -->
+  <div style="margin-bottom:0.8rem;">
+    <button class="btn" onclick="toggleUnstimmigkeitForm()"
+            style="border-color:#f0ad4e; color:#7a5500;">
+      ⚠ Bestandsunstimmigkeit melden
+    </button>
+    <div class="aktion-bereich" id="unstimmigkeitFormBereich" style="display:none; margin-top:0.5rem;">
+      <h4>Bestandsunstimmigkeit erfassen</h4>
+      <div class="inline-form" style="flex-direction:column; gap:0.5rem;">
+        <div class="feld">
+          <label style="font-size:12px; font-weight:bold;">
+            Tatsächlich gezählter Bestand
+            (<span id="unstimmEinheit">Stk</span>)
+          </label>
+          <input type="number" id="unstimmGezaehlt" min="0" step="any"
+                 placeholder="z. B. 7" style="max-width:120px;" />
+        </div>
+        <div class="feld">
+          <label style="font-size:12px; font-weight:bold;">Kommentar (optional)</label>
+          <textarea id="unstimmKommentar" rows="2"
+                    placeholder="z. B. Übergabekontrolle – Ampulle fehlt ohne Dokumentation"></textarea>
+        </div>
+        <div class="btn-reihe">
+          <button class="btn" onclick="unstimmigkeitBestaetigen()"
+                  style="border-color:#f0ad4e; color:#7a5500;">Unstimmigkeit melden</button>
+          <button class="btn" onclick="toggleUnstimmigkeitForm()">Abbrechen</button>
+        </div>
+        <div class="fehler" id="unstimmFehler"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Protokolltabelle -->
   <div class="protokoll-wrapper">
     <table class="protokoll">
@@ -378,6 +504,7 @@
           <th class="zahl">Menge</th>
           <th class="zahl">Bestand nach Buchung</th>
           <th>Erfasser</th>
+          <th></th>
         </tr>
       </thead>
       <tbody id="protokollBody">
@@ -426,10 +553,11 @@
   ];
 
   // ================================================================
-  // EINGELOGGTER BENUTZER
-  // In einem echten System käme dies aus der Session / dem Auth-Token.
+  // EINGELOGGTER BENUTZER & TAGESVERANTWORTLICHE
+  // In einem echten System kämen diese aus der Session / dem Auth-Token.
   // ================================================================
-  const EINGELOGGTER_BENUTZER = "m.muster";
+  const EINGELOGGTER_BENUTZER    = "m.muster";
+  const TAGESVERANTWORTLICHE     = "dr.mueller";   // Simuliert für Benachrichtigungen
 
   // ================================================================
   // DATENMODELL
@@ -442,6 +570,12 @@
   let patientenMedikamente = [];
   let aktiveMedId          = null;
   let naechsteId           = 1;
+  let naechsteEintragId    = 1;    // Eindeutige ID pro Protokolleintrag
+  let aktiveStornoId       = null; // EintragId des aktuell zu stornierenden Eintrags
+
+  // Postfach: Array von { id, empfaenger, betreff, text, datum, uhrzeit, gelesen }
+  const POSTFACH = [];
+  let naechsteNachrichtId = 1;
 
   // Aktuell in der Suche ausgewählter Eintrag:
   // { type: 'katalog', katalogId } oder { type: 'freitext', name } oder null
@@ -607,12 +741,15 @@
       bestand:     startbestand,
       protokoll:   startbestand > 0
         ? [{
+            eintragId:   naechsteEintragId++,
             datum:       heuteDatum(),
             uhrzeit:     jetztUhrzeit(),
+            einheit:     einheit || "Stk",
             typ:         "Zugang",
             menge:       startbestand,
             bestandNach: startbestand,
-            erfasser:    EINGELOGGTER_BENUTZER
+            erfasser:    EINGELOGGTER_BENUTZER,
+            storniert:   false
           }]
         : []
     });
@@ -733,6 +870,14 @@
       document.getElementById(id).textContent = "";
     });
 
+    // Unstimmigkeit-Einheit Label synchronisieren
+    document.getElementById("unstimmEinheit").textContent = med.einheit;
+
+    // Eventuell offene Aktionsformulare schliessen
+    document.getElementById("stornoFormBereich").style.display    = "none";
+    document.getElementById("unstimmigkeitFormBereich").style.display = "none";
+    aktiveStornoId = null;
+
     document.getElementById("seiteUebersicht").classList.remove("aktiv");
     document.getElementById("seiteDetail").classList.add("aktiv");
     window.scrollTo(0, 0);
@@ -759,7 +904,7 @@
     if (med.protokoll.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="color:#999; font-style:italic; font-size:12px;">
+          <td colspan="7" style="color:#999; font-style:italic; font-size:12px;">
             Noch keine Buchungen vorhanden.
           </td>
         </tr>`;
@@ -767,17 +912,51 @@
     }
 
     [...med.protokoll].reverse().forEach(e => {
-      // e.einheit: Einheit zum Zeitpunkt der Buchung (historisch korrekt)
-      // Fallback auf med.einheit für ältere Einträge ohne gespeicherte Einheit
       const eEinheit = e.einheit || med.einheit;
       const tr = document.createElement("tr");
+
+      // Zeilen-Klasse je nach Zustand
+      const istStornoKomp    = e.typ === "Storno-Zugang" || e.typ === "Storno-Entnahme";
+      const istUnstimmigkeit = e.typ === "Unstimmigkeit";
+      if (e.storniert)     tr.classList.add("zeile-storniert");
+      if (istStornoKomp)   tr.classList.add("zeile-storno-komp");
+      if (istUnstimmigkeit) tr.classList.add("zeile-unstimmigkeit");
+
+      // Typ-CSS-Klasse
+      let typKlasse = "typ-entnahme";
+      if (e.typ === "Zugang")          typKlasse = "typ-zugang";
+      if (istStornoKomp)               typKlasse = "typ-storno";
+      if (istUnstimmigkeit)            typKlasse = "typ-unstimmigkeit";
+
+      // Mengen- und Bestandzellen: Unstimmigkeit zeigt gesonderte Info
+      let mengeZelle    = `${e.menge} ${eEinheit}`;
+      let bestandZelle  = `${e.bestandNach} ${eEinheit}`;
+      if (istUnstimmigkeit) {
+        mengeZelle   = `Gezählt: ${e.gezaehlt} ${eEinheit}`;
+        bestandZelle = `Diff: ${e.differenz > 0 ? "+" : ""}${e.differenz} ${eEinheit}`;
+      }
+
+      // Storno-Button: nur bei normalen, nicht-stornier­ten Einträgen
+      const kannStorniert = !e.storniert && !istStornoKomp && !istUnstimmigkeit;
+      const aktionsZelle  = kannStorniert
+        ? `<button class="storno-btn" onclick="stornoEintrag(${e.eintragId})">Stornieren</button>`
+        : "";
+
+      // Kommentar (bei stornier­ten oder Storno-Komp-Einträgen sichtbar)
+      const kommentarZeile = e.stornoKommentar
+        ? `<br><span style="font-size:11px; color:#888;">Grund: ${e.stornoKommentar}</span>`
+        : (e.kommentar
+          ? `<br><span style="font-size:11px; color:#888;">${e.kommentar}</span>`
+          : "");
+
       tr.innerHTML = `
         <td>${e.datum}</td>
         <td>${e.uhrzeit}</td>
-        <td class="typ-${e.typ === "Zugang" ? "zugang" : "entnahme"}">${e.typ}</td>
-        <td class="zahl">${e.menge} ${eEinheit}</td>
-        <td class="zahl">${e.bestandNach} ${eEinheit}</td>
+        <td class="${typKlasse}">${e.typ}${kommentarZeile}</td>
+        <td class="zahl">${mengeZelle}</td>
+        <td class="zahl">${bestandZelle}</td>
         <td>${e.erfasser}</td>
+        <td>${aktionsZelle}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -817,13 +996,15 @@
     med.bestand = Math.round((med.bestand + (istZugang ? menge : -menge)) * 10) / 10;
 
     med.protokoll.push({
+      eintragId:   naechsteEintragId++,
       datum:       heuteDatum(),
       uhrzeit:     jetztUhrzeit(),
-      einheit:     med.einheit,   // Einheit zum Zeitpunkt der Buchung festhalten
+      einheit:     med.einheit,
       typ,
       menge,
       bestandNach: med.bestand,
-      erfasser:    EINGELOGGTER_BENUTZER,  // automatisch aus Session
+      erfasser:    EINGELOGGTER_BENUTZER,
+      storniert:   false,
     });
 
     document.getElementById("detailBestand").textContent = med.bestand;
@@ -834,9 +1015,212 @@
   }
 
   // ================================================================
+  // STORNO-LOGIK
+  // ================================================================
+
+  /** Startet den Storno-Prozess für einen Eintrag */
+  function stornoEintrag(eintragId) {
+    aktiveStornoId = eintragId;
+    document.getElementById("stornoKommentar").value = "";
+    document.getElementById("stornoFehler").textContent = "";
+    document.getElementById("stornoFormBereich").style.display = "";
+    document.getElementById("stornoFormBereich").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function stornoAbbrechen() {
+    aktiveStornoId = null;
+    document.getElementById("stornoFormBereich").style.display = "none";
+    document.getElementById("stornoKommentar").value = "";
+  }
+
+  function stornoBestaetigen() {
+    const kommentar = document.getElementById("stornoKommentar").value.trim();
+    const fehlerDiv = document.getElementById("stornoFehler");
+    fehlerDiv.textContent = "";
+
+    if (!kommentar) {
+      fehlerDiv.textContent = "Bitte eine Begründung eingeben.";
+      return;
+    }
+
+    const med     = medById(aktiveMedId);
+    const eintrag = med.protokoll.find(e => e.eintragId === aktiveStornoId);
+    if (!eintrag) return;
+
+    // Originaleintrag als storniert markieren
+    eintrag.storniert       = true;
+    eintrag.stornoKommentar = kommentar;
+    eintrag.stornoZeitpunkt = `${heuteDatum()} ${jetztUhrzeit()}`;
+    eintrag.stornoVon       = EINGELOGGTER_BENUTZER;
+
+    // Kompensierender Gegeneintrag (stellt aktuellen Bestand korrekt)
+    const kompTyp   = eintrag.typ === "Zugang" ? "Storno-Entnahme" : "Storno-Zugang";
+    const bestandDelta = eintrag.typ === "Zugang" ? -eintrag.menge : eintrag.menge;
+    med.bestand = Math.round((med.bestand + bestandDelta) * 10) / 10;
+
+    med.protokoll.push({
+      eintragId:      naechsteEintragId++,
+      datum:          heuteDatum(),
+      uhrzeit:        jetztUhrzeit(),
+      einheit:        eintrag.einheit,
+      typ:            kompTyp,
+      menge:          eintrag.menge,
+      bestandNach:    med.bestand,
+      erfasser:       EINGELOGGTER_BENUTZER,
+      storniert:      false,
+      stornoKommentar: `Storno von Eintrag ${heuteDatum()}: ${kommentar}`,
+    });
+
+    // UI aktualisieren
+    document.getElementById("detailBestand").textContent = med.bestand;
+    document.getElementById("stornoFormBereich").style.display = "none";
+    aktiveStornoId = null;
+    renderProtokoll(med);
+    renderMedListe(); // Bestand in Übersicht aktualisieren
+  }
+
+  // ================================================================
+  // BESTANDSUNSTIMMIGKEIT
+  // ================================================================
+
+  function toggleUnstimmigkeitForm() {
+    const bereich = document.getElementById("unstimmigkeitFormBereich");
+    const offen   = bereich.style.display !== "none";
+    bereich.style.display = offen ? "none" : "";
+    if (!offen) {
+      document.getElementById("unstimmGezaehlt").value = "";
+      document.getElementById("unstimmKommentar").value = "";
+      document.getElementById("unstimmFehler").textContent = "";
+    }
+  }
+
+  function unstimmigkeitBestaetigen() {
+    const fehlerDiv   = document.getElementById("unstimmFehler");
+    fehlerDiv.textContent = "";
+    const gezaehltRaw = document.getElementById("unstimmGezaehlt").value;
+    const kommentar   = document.getElementById("unstimmKommentar").value.trim();
+    const med         = medById(aktiveMedId);
+
+    const istMl   = med.einheit === "ml";
+    const gezaehlt = istMl ? parseFloat(gezaehltRaw) : parseInt(gezaehltRaw, 10);
+
+    if (gezaehltRaw === "" || isNaN(gezaehlt) || gezaehlt < 0) {
+      fehlerDiv.textContent = "Bitte den tatsächlich gezählten Bestand eingeben (≥ 0).";
+      return;
+    }
+
+    const differenz = Math.round((gezaehlt - med.bestand) * 10) / 10;
+
+    // Unstimmigkeitseintrag im Protokoll
+    med.protokoll.push({
+      eintragId:   naechsteEintragId++,
+      datum:       heuteDatum(),
+      uhrzeit:     jetztUhrzeit(),
+      einheit:     med.einheit,
+      typ:         "Unstimmigkeit",
+      menge:       0,
+      gezaehlt,
+      differenz,
+      bestandNach: med.bestand,   // Systembestand bleibt unverändert
+      erfasser:    EINGELOGGTER_BENUTZER,
+      storniert:   false,
+      kommentar:   kommentar || null,
+    });
+
+    // Automatische Benachrichtigungen erzeugen
+    const letzterEintrag  = [...med.protokoll]
+      .filter(e => e.typ !== "Unstimmigkeit" && !e.storniert)
+      .at(-1);
+    const letzterErfasser = letzterEintrag ? letzterEintrag.erfasser : "unbekannt";
+
+    const nachrichtText =
+      `Medikament: ${med.produktname}\n` +
+      `Gemeldet am: ${heuteDatum()} ${jetztUhrzeit()}\n` +
+      `Gemeldet von: ${EINGELOGGTER_BENUTZER}\n` +
+      `Dokumentierter Bestand: ${med.bestand} ${med.einheit}\n` +
+      `Tatsächlich gezählt: ${gezaehlt} ${med.einheit}\n` +
+      `Differenz: ${differenz > 0 ? "+" : ""}${differenz} ${med.einheit}` +
+      (kommentar ? `\nKommentar: ${kommentar}` : "");
+
+    erstelleNachricht(
+      TAGESVERANTWORTLICHE,
+      `Bestandsunstimmigkeit: ${med.produktname}`,
+      nachrichtText
+    );
+    if (letzterErfasser !== EINGELOGGTER_BENUTZER) {
+      erstelleNachricht(
+        letzterErfasser,
+        `Bestandsunstimmigkeit bei Ihrer letzten Buchung: ${med.produktname}`,
+        nachrichtText
+      );
+    }
+
+    // UI aktualisieren
+    toggleUnstimmigkeitForm();
+    renderProtokoll(med);
+    renderPostfach();
+  }
+
+  // ================================================================
+  // POSTFACH / BENACHRICHTIGUNGEN
+  // ================================================================
+
+  function erstelleNachricht(empfaenger, betreff, text) {
+    POSTFACH.unshift({
+      id:         naechsteNachrichtId++,
+      empfaenger,
+      betreff,
+      text,
+      datum:      heuteDatum(),
+      uhrzeit:    jetztUhrzeit(),
+      gelesen:    false,
+    });
+    renderPostfach();
+  }
+
+  function renderPostfach() {
+    const liste    = document.getElementById("postfachListe");
+    const badge    = document.getElementById("postfachBadge");
+    const ungelesen = POSTFACH.filter(n => !n.gelesen).length;
+
+    badge.style.display  = ungelesen > 0 ? "" : "none";
+    badge.textContent    = ungelesen;
+
+    if (POSTFACH.length === 0) {
+      liste.innerHTML = `<p style="color:#999; font-size:12px; font-style:italic;">Keine Nachrichten vorhanden.</p>`;
+      return;
+    }
+
+    liste.innerHTML = "";
+    POSTFACH.forEach(n => {
+      const div = document.createElement("div");
+      div.className = "postfach-nachricht" + (n.gelesen ? " gelesen" : "");
+      div.innerHTML =
+        `<div class="nkopf">` +
+          `An: <strong>${n.empfaenger}</strong> &nbsp;|&nbsp; ` +
+          `${n.datum} ${n.uhrzeit}` +
+          (!n.gelesen ? `<span class="badge-neu">Neu</span>` : "") +
+        `</div>` +
+        `<div><strong>${n.betreff}</strong></div>` +
+        `<div class="ntext" style="margin-top:3px;">${n.text}</div>` +
+        (!n.gelesen
+          ? `<button class="btn" style="margin-top:4px; font-size:11px;"
+               onclick="nachrichtAlsGelesenMarkieren(${n.id})">Als gelesen markieren</button>`
+          : "");
+      liste.appendChild(div);
+    });
+  }
+
+  function nachrichtAlsGelesenMarkieren(id) {
+    const n = POSTFACH.find(m => m.id === id);
+    if (n) { n.gelesen = true; renderPostfach(); }
+  }
+
+  // ================================================================
   // Initialisierung
   // ================================================================
   renderMedListe();
+  renderPostfach();
 </script>
 
 </body>
