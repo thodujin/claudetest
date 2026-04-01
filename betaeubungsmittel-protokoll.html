@@ -254,6 +254,16 @@
         </div>
       </div>
 
+      <!-- Einheitenauswahl: nur für flüssige Medikamente sichtbar -->
+      <div class="feld schmal" id="einheitFeld" style="display:none;">
+        <label for="neuEinheit">Einheit</label>
+        <select id="neuEinheit">
+          <option value="ml">ml</option>
+          <option value="Trpf">Trpf</option>
+          <option value="Stk">Stk</option>
+        </select>
+      </div>
+
       <div class="feld schmal">
         <label for="neuStartbestand">Startbestand (optional)</label>
         <input type="number" id="neuStartbestand" min="0" step="1" placeholder="0" />
@@ -283,7 +293,8 @@
     <h2 id="detailProduktname">—</h2>
     <span class="wirkstoff-info" id="detailWirkstoff">—</span>
     <span class="bestand-info">
-      Aktueller Bestand: <strong id="detailBestand">—</strong> Einheiten
+      Aktueller Bestand: <strong id="detailBestand">—</strong>
+      <span id="detailEinheit">Einheiten</span>
     </span>
   </div>
 
@@ -295,8 +306,10 @@
       <h3>+ Zugang erfassen</h3>
       <div class="inline-form" style="flex-direction:column; gap:0.4rem;">
         <div class="feld">
-          <label for="zugMenge">Menge</label>
-          <input type="number" id="zugMenge" min="1" step="1"
+          <label for="zugMenge">
+            Menge (<span id="zugMengeEinheit">Stk</span>)
+          </label>
+          <input type="number" id="zugMenge" min="0.001" step="1"
                  placeholder="z. B. 10" style="min-width:0;" />
         </div>
         <button class="btn" onclick="buchen('Zugang')">Zugang buchen</button>
@@ -309,8 +322,10 @@
       <h3>− Entnahme erfassen</h3>
       <div class="inline-form" style="flex-direction:column; gap:0.4rem;">
         <div class="feld">
-          <label for="entMenge">Menge</label>
-          <input type="number" id="entMenge" min="1" step="1"
+          <label for="entMenge">
+            Menge (<span id="entMengeEinheit">Stk</span>)
+          </label>
+          <input type="number" id="entMenge" min="0.001" step="1"
                  placeholder="z. B. 2" style="min-width:0;" />
         </div>
         <button class="btn" onclick="buchen('Entnahme')">Entnahme buchen</button>
@@ -353,18 +368,18 @@
   // Jeder Eintrag: { katalogId, produktname, wirkstoff }
   // ================================================================
   const KATALOG = [
-    { katalogId: "K01", produktname: "Fentalis 25 mcg/h TTS",     wirkstoff: "Fentanyl 25 mcg/h Pflaster" },
-    { katalogId: "K02", produktname: "Fentalis 50 mcg/h TTS",     wirkstoff: "Fentanyl 50 mcg/h Pflaster" },
-    { katalogId: "K03", produktname: "Fentanyl Sintetica 0,05 mg/ml Inj.", wirkstoff: "Fentanyl 0,05 mg/ml Inj.-Lsg." },
-    { katalogId: "K04", produktname: "MST Continus 10 mg",         wirkstoff: "Morphin 10 mg Retardtablette" },
-    { katalogId: "K05", produktname: "MST Continus 30 mg",         wirkstoff: "Morphin 30 mg Retardtablette" },
-    { katalogId: "K06", produktname: "Morphin HCl 10 mg/ml Inj.", wirkstoff: "Morphin 10 mg/ml Inj.-Lsg." },
-    { katalogId: "K07", produktname: "OxyContin 10 mg",            wirkstoff: "Oxycodon 10 mg Retardtablette" },
-    { katalogId: "K08", produktname: "OxyNorm 5 mg Kps.",          wirkstoff: "Oxycodon 5 mg Kapsel" },
-    { katalogId: "K09", produktname: "Dormicum 5 mg/ml Inj.",      wirkstoff: "Midazolam 5 mg/ml Inj.-Lsg." },
-    { katalogId: "K10", produktname: "Ketalar 50 mg/ml Inj.",      wirkstoff: "Ketamin 50 mg/ml Inj.-Lsg." },
-    { katalogId: "K11", produktname: "Tramal 100 mg Inj.",         wirkstoff: "Tramadol 100 mg/2 ml Inj.-Lsg." },
-    { katalogId: "K12", produktname: "Tramal Retard 100 mg",       wirkstoff: "Tramadol 100 mg Retardtablette" },
+    { katalogId: "K01", produktname: "Fentalis 25 mcg/h TTS",              wirkstoff: "Fentanyl 25 mcg/h Pflaster",       fluessig: false },
+    { katalogId: "K02", produktname: "Fentalis 50 mcg/h TTS",              wirkstoff: "Fentanyl 50 mcg/h Pflaster",       fluessig: false },
+    { katalogId: "K03", produktname: "Fentanyl Sintetica 0,05 mg/ml Inj.", wirkstoff: "Fentanyl 0,05 mg/ml Inj.-Lsg.",   fluessig: true  },
+    { katalogId: "K04", produktname: "MST Continus 10 mg",                 wirkstoff: "Morphin 10 mg Retardtablette",     fluessig: false },
+    { katalogId: "K05", produktname: "MST Continus 30 mg",                 wirkstoff: "Morphin 30 mg Retardtablette",     fluessig: false },
+    { katalogId: "K06", produktname: "Morphin HCl 10 mg/ml Inj.",          wirkstoff: "Morphin 10 mg/ml Inj.-Lsg.",       fluessig: true  },
+    { katalogId: "K07", produktname: "OxyContin 10 mg",                    wirkstoff: "Oxycodon 10 mg Retardtablette",    fluessig: false },
+    { katalogId: "K08", produktname: "OxyNorm 5 mg Kps.",                  wirkstoff: "Oxycodon 5 mg Kapsel",             fluessig: false },
+    { katalogId: "K09", produktname: "Dormicum 5 mg/ml Inj.",              wirkstoff: "Midazolam 5 mg/ml Inj.-Lsg.",      fluessig: true  },
+    { katalogId: "K10", produktname: "Ketalar 50 mg/ml Inj.",              wirkstoff: "Ketamin 50 mg/ml Inj.-Lsg.",       fluessig: true  },
+    { katalogId: "K11", produktname: "Tramal 100 mg Inj.",                 wirkstoff: "Tramadol 100 mg/2 ml Inj.-Lsg.",   fluessig: true  },
+    { katalogId: "K12", produktname: "Tramal Retard 100 mg",               wirkstoff: "Tramadol 100 mg Retardtablette",   fluessig: false },
   ];
 
   // ================================================================
@@ -390,14 +405,15 @@
   let suchAuswahl = null;
 
   // ── Beispieldaten für Herr Muster (vorbefüllt) ──────────────────
+  // einheit: fest – wird beim Anlegen gewählt und kann nicht mehr geändert werden.
   const BEISPIELE = [
-    { katalogId: "K01", startbestand: 5 },
-    { katalogId: "K04", startbestand: 20 },
-    { katalogId: "K09", startbestand: 8 },
+    { katalogId: "K01", startbestand: 5,   einheit: "Stk" },  // Pflaster → Stück
+    { katalogId: "K04", startbestand: 20,  einheit: "Stk" },  // Tabletten → Stück
+    { katalogId: "K09", startbestand: 8,   einheit: "ml"  },  // Injektion → ml
   ];
   BEISPIELE.forEach(b => {
     const eintrag = KATALOG.find(k => k.katalogId === b.katalogId);
-    if (eintrag) medikamentAnlegen(eintrag, b.startbestand);
+    if (eintrag) medikamentAnlegen(eintrag, b.startbestand, b.einheit);
   });
 
   // Benutzernamen in der Oberfläche anzeigen
@@ -470,12 +486,32 @@
     suchAuswahl = { type: "katalog", katalogId: katalogEintrag.katalogId };
     document.getElementById("medSuche").value = katalogEintrag.produktname;
     document.getElementById("vorschlaege").classList.remove("offen");
+
+    // Einheitenfeld: nur bei flüssigen Medikamenten anzeigen
+    const einheitFeld = document.getElementById("einheitFeld");
+    const einheitSel  = document.getElementById("neuEinheit");
+    if (katalogEintrag.fluessig) {
+      // Nur ml und Trpf für Flüssigkeiten
+      einheitSel.innerHTML =
+        '<option value="ml">ml</option><option value="Trpf">Trpf</option>';
+      einheitFeld.style.display = "";
+    } else {
+      einheitFeld.style.display = "none";
+    }
   }
 
   function freitextWaehlen(name) {
     suchAuswahl = { type: "freitext", name };
     document.getElementById("medSuche").value = name;
     document.getElementById("vorschlaege").classList.remove("offen");
+
+    // Freitext: Einheitenfeld mit allen Optionen anbieten
+    const einheitSel = document.getElementById("neuEinheit");
+    einheitSel.innerHTML =
+      '<option value="Stk">Stk</option>' +
+      '<option value="ml">ml</option>'   +
+      '<option value="Trpf">Trpf</option>';
+    document.getElementById("einheitFeld").style.display = "";
   }
 
   // onblur verzögert schliessen, damit onclick der li noch feuert
@@ -487,13 +523,16 @@
 
   // ================================================================
   // Medikament anlegen (intern)
+  // einheit: "ml" | "Trpf" | "Stk"
   // ================================================================
-  function medikamentAnlegen(eintrag, startbestand) {
+  function medikamentAnlegen(eintrag, startbestand, einheit) {
+    const gewaehlteEinheit = einheit || "Stk";
     patientenMedikamente.push({
       id:          naechsteId++,
       katalogId:   eintrag.katalogId || null,
       produktname: eintrag.produktname,
-      wirkstoff:   eintrag.wirkstoff  || "(Freitext – nicht im Katalog)",
+      wirkstoff:   eintrag.wirkstoff || "(Freitext – nicht im Katalog)",
+      einheit:     gewaehlteEinheit,
       bestand:     startbestand,
       protokoll:   startbestand > 0
         ? [{
@@ -530,8 +569,13 @@
     }
 
     let eintrag;
+    let einheit;
     if (suchAuswahl.type === "katalog") {
       eintrag = KATALOG.find(k => k.katalogId === suchAuswahl.katalogId);
+      // Flüssig → Einheit aus Select; fest → immer "Stk"
+      einheit = eintrag.fluessig
+        ? document.getElementById("neuEinheit").value
+        : "Stk";
     } else {
       // Duplikat-Prüfung für Freitext (case-insensitive nach Produktname)
       const nameNorm = suchAuswahl.name.toLowerCase();
@@ -540,15 +584,17 @@
         return;
       }
       eintrag = { katalogId: null, produktname: suchAuswahl.name, wirkstoff: "" };
+      einheit = document.getElementById("neuEinheit").value || "Stk";
     }
 
-    medikamentAnlegen(eintrag, startbestand);
+    medikamentAnlegen(eintrag, startbestand, einheit);
     renderMedListe();
 
     // Formular zurücksetzen
     suchAuswahl = null;
-    document.getElementById("medSuche").value        = "";
-    document.getElementById("neuStartbestand").value = "";
+    document.getElementById("medSuche").value         = "";
+    document.getElementById("neuStartbestand").value  = "";
+    document.getElementById("einheitFeld").style.display = "none";
   }
 
   // ================================================================
@@ -572,7 +618,7 @@
       tr.innerHTML = `
         <td class="produktname">${med.produktname}</td>
         <td class="wirkstoff">${med.wirkstoff}</td>
-        <td class="bestand">${med.bestand}</td>
+        <td class="bestand">${med.bestand} ${med.einheit}</td>
         <td style="color:#777; font-size:12px;">▶ öffnen</td>
       `;
       tbody.appendChild(tr);
@@ -589,6 +635,17 @@
     document.getElementById("detailProduktname").textContent = med.produktname;
     document.getElementById("detailWirkstoff").textContent   = med.wirkstoff;
     document.getElementById("detailBestand").textContent     = med.bestand;
+    document.getElementById("detailEinheit").textContent     = med.einheit;
+
+    // Menge-Inputs an Einheit anpassen
+    const istMl = med.einheit === "ml";
+    ["zugMenge", "entMenge"].forEach(id => {
+      const inp = document.getElementById(id);
+      inp.step        = istMl ? "0.1" : "1";
+      inp.placeholder = istMl ? "z. B. 2.5" : "z. B. 2";
+    });
+    document.getElementById("zugMengeEinheit").textContent = med.einheit;
+    document.getElementById("entMengeEinheit").textContent = med.einheit;
 
     renderProtokoll(med);
 
@@ -633,14 +690,15 @@
       return;
     }
 
+    const einheit = med.einheit;
     [...med.protokoll].reverse().forEach(e => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${e.datum}</td>
         <td>${e.uhrzeit}</td>
         <td class="typ-${e.typ === "Zugang" ? "zugang" : "entnahme"}">${e.typ}</td>
-        <td class="zahl">${e.menge}</td>
-        <td class="zahl">${e.bestandNach}</td>
+        <td class="zahl">${e.menge} ${einheit}</td>
+        <td class="zahl">${e.bestandNach} ${einheit}</td>
         <td>${e.erfasser}</td>
       `;
       tbody.appendChild(tr);
@@ -660,22 +718,25 @@
     fehlerDiv.textContent = "";
 
     const mengeRaw = document.getElementById(mengeId).value;
-    const menge    = parseInt(mengeRaw, 10);
+    const med      = medById(aktiveMedId);
+    const istMl    = med.einheit === "ml";
 
-    if (!mengeRaw || isNaN(menge) || menge < 1) {
-      fehlerDiv.textContent = "Bitte eine gültige Menge (mind. 1) eingeben.";
+    // Für ml Dezimalwerte erlauben, sonst nur ganze Zahlen
+    const menge = istMl ? parseFloat(mengeRaw) : parseInt(mengeRaw, 10);
+
+    if (!mengeRaw || isNaN(menge) || menge <= 0) {
+      fehlerDiv.textContent = `Bitte eine gültige Menge (> 0 ${med.einheit}) eingeben.`;
       return;
     }
-
-    const med = medById(aktiveMedId);
 
     if (!istZugang && med.bestand < menge) {
       fehlerDiv.textContent =
-        `Nicht genug Bestand. Aktueller Bestand: ${med.bestand} Einheit(en).`;
+        `Nicht genug Bestand. Aktueller Bestand: ${med.bestand} ${med.einheit}.`;
       return;
     }
 
-    med.bestand += istZugang ? menge : -menge;
+    // Auf eine Nachkommastelle runden um Float-Ungenauigkeiten zu vermeiden
+    med.bestand = Math.round((med.bestand + (istZugang ? menge : -menge)) * 10) / 10;
 
     med.protokoll.push({
       datum:       heuteDatum(),
@@ -687,6 +748,7 @@
     });
 
     document.getElementById("detailBestand").textContent = med.bestand;
+    document.getElementById("detailEinheit").textContent = med.einheit;
     renderProtokoll(med);
 
     document.getElementById(mengeId).value = "";
