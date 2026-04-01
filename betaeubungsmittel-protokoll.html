@@ -203,6 +203,22 @@
     .vorschlaege li .vs-wirkstoff { font-size: 11px; color: #777; }
     .vorschlaege li.freitext-option { color: #555; font-style: italic; }
 
+    /* ── Arzneiform-Badge ── */
+    .arzneiform-badge {
+      display: inline-block;
+      font-size: 11px;
+      color: #555;
+      background: #eee;
+      border: 1px solid #ccc;
+      padding: 1px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .vorschlaege li .vs-arzneiform {
+      font-size: 11px;
+      color: #888;
+      margin-left: 6px;
+    }
     /* ── Eingeloggter Benutzer (Kopf) ── */
     .benutzer-info { font-size: 12px; color: #555; margin-top: 3px; }
   </style>
@@ -290,7 +306,9 @@
   </div>
 
   <div class="detail-kopf">
-    <h2 id="detailProduktname">—</h2>
+    <h2 id="detailProduktname">—
+      <span class="arzneiform-badge" id="detailArzneiform">—</span>
+    </h2>
     <span class="wirkstoff-info" id="detailWirkstoff">—</span>
     <span class="bestand-info">
       Aktueller Bestand: <strong id="detailBestand">—</strong>
@@ -367,19 +385,30 @@
   // Quelle der Wahrheit – nur diese Substanzen dürfen hinzugefügt werden.
   // Jeder Eintrag: { katalogId, produktname, wirkstoff }
   // ================================================================
+  // arzneiform-Werte: "Pflaster" | "Ampulle" | "Tablette" | "Kapsel" | "Flasche"
+  // Flasche = Tropfenpräparat → Einheit wählbar (ml oder Trpf)
+  // Ampulle = wird als Stück gezählt (eine Ampulle = eine Einheit)
   const KATALOG = [
-    { katalogId: "K01", produktname: "Fentalis 25 mcg/h TTS",              wirkstoff: "Fentanyl 25 mcg/h Pflaster",       fluessig: false },
-    { katalogId: "K02", produktname: "Fentalis 50 mcg/h TTS",              wirkstoff: "Fentanyl 50 mcg/h Pflaster",       fluessig: false },
-    { katalogId: "K03", produktname: "Fentanyl Sintetica 0,05 mg/ml Inj.", wirkstoff: "Fentanyl 0,05 mg/ml Inj.-Lsg.",   fluessig: true  },
-    { katalogId: "K04", produktname: "MST Continus 10 mg",                 wirkstoff: "Morphin 10 mg Retardtablette",     fluessig: false },
-    { katalogId: "K05", produktname: "MST Continus 30 mg",                 wirkstoff: "Morphin 30 mg Retardtablette",     fluessig: false },
-    { katalogId: "K06", produktname: "Morphin HCl 10 mg/ml Inj.",          wirkstoff: "Morphin 10 mg/ml Inj.-Lsg.",       fluessig: true  },
-    { katalogId: "K07", produktname: "OxyContin 10 mg",                    wirkstoff: "Oxycodon 10 mg Retardtablette",    fluessig: false },
-    { katalogId: "K08", produktname: "OxyNorm 5 mg Kps.",                  wirkstoff: "Oxycodon 5 mg Kapsel",             fluessig: false },
-    { katalogId: "K09", produktname: "Dormicum 5 mg/ml Inj.",              wirkstoff: "Midazolam 5 mg/ml Inj.-Lsg.",      fluessig: true  },
-    { katalogId: "K10", produktname: "Ketalar 50 mg/ml Inj.",              wirkstoff: "Ketamin 50 mg/ml Inj.-Lsg.",       fluessig: true  },
-    { katalogId: "K11", produktname: "Tramal 100 mg Inj.",                 wirkstoff: "Tramadol 100 mg/2 ml Inj.-Lsg.",   fluessig: true  },
-    { katalogId: "K12", produktname: "Tramal Retard 100 mg",               wirkstoff: "Tramadol 100 mg Retardtablette",   fluessig: false },
+    // Pflaster
+    { katalogId: "K01", arzneiform: "Pflaster", produktname: "Fentalis 25 mcg/h TTS",              wirkstoff: "Fentanyl 25 mcg/h"         },
+    { katalogId: "K02", arzneiform: "Pflaster", produktname: "Fentalis 50 mcg/h TTS",              wirkstoff: "Fentanyl 50 mcg/h"         },
+    // Ampullen (Injektion)
+    { katalogId: "K03", arzneiform: "Ampulle",  produktname: "Fentanyl Sintetica 0,05 mg/ml Inj.", wirkstoff: "Fentanyl 0,05 mg/ml"       },
+    { katalogId: "K06", arzneiform: "Ampulle",  produktname: "Morphin HCl 10 mg/ml Inj.",          wirkstoff: "Morphin 10 mg/ml"          },
+    { katalogId: "K09", arzneiform: "Ampulle",  produktname: "Dormicum 5 mg/ml Inj.",              wirkstoff: "Midazolam 5 mg/ml"         },
+    { katalogId: "K10", arzneiform: "Ampulle",  produktname: "Ketalar 50 mg/ml Inj.",              wirkstoff: "Ketamin 50 mg/ml"          },
+    { katalogId: "K11", arzneiform: "Ampulle",  produktname: "Tramal 100 mg Inj.",                 wirkstoff: "Tramadol 100 mg/2 ml"      },
+    // Tabletten
+    { katalogId: "K04", arzneiform: "Tablette", produktname: "MST Continus 10 mg",                 wirkstoff: "Morphin 10 mg retardiert"  },
+    { katalogId: "K05", arzneiform: "Tablette", produktname: "MST Continus 30 mg",                 wirkstoff: "Morphin 30 mg retardiert"  },
+    { katalogId: "K07", arzneiform: "Tablette", produktname: "OxyContin 10 mg",                    wirkstoff: "Oxycodon 10 mg retardiert" },
+    { katalogId: "K12", arzneiform: "Tablette", produktname: "Tramal Retard 100 mg",               wirkstoff: "Tramadol 100 mg retardiert"},
+    // Kapseln
+    { katalogId: "K08", arzneiform: "Kapsel",   produktname: "OxyNorm 5 mg Kps.",                  wirkstoff: "Oxycodon 5 mg"             },
+    // Flaschen / Tropfenpräparate → Einheit wählbar: ml oder Trpf
+    { katalogId: "K13", arzneiform: "Flasche",  produktname: "Methaddict Tropfen 5 mg/ml",         wirkstoff: "Methadon 5 mg/ml oral"     },
+    { katalogId: "K14", arzneiform: "Flasche",  produktname: "Morphin Tropfen 20 mg/ml",           wirkstoff: "Morphin 20 mg/ml oral"     },
+    { katalogId: "K15", arzneiform: "Flasche",  produktname: "Oramorph 10 mg/5 ml Lsg.",           wirkstoff: "Morphin 2 mg/ml oral"      },
   ];
 
   // ================================================================
@@ -405,11 +434,12 @@
   let suchAuswahl = null;
 
   // ── Beispieldaten für Herr Muster (vorbefüllt) ──────────────────
-  // einheit: fest – wird beim Anlegen gewählt und kann nicht mehr geändert werden.
+  // einheit: fest – wird beim Anlegen gewählt und kann danach nicht mehr geändert werden.
   const BEISPIELE = [
-    { katalogId: "K01", startbestand: 5,   einheit: "Stk" },  // Pflaster → Stück
-    { katalogId: "K04", startbestand: 20,  einheit: "Stk" },  // Tabletten → Stück
-    { katalogId: "K09", startbestand: 8,   einheit: "ml"  },  // Injektion → ml
+    { katalogId: "K01", startbestand: 5,  einheit: "Stk" },  // Pflaster  → immer Stk
+    { katalogId: "K04", startbestand: 20, einheit: "Stk" },  // Tablette  → immer Stk
+    { katalogId: "K09", startbestand: 6,  einheit: "Stk" },  // Ampulle   → immer Stk
+    { katalogId: "K13", startbestand: 30, einheit: "ml"  },  // Flasche   → Nutzer wählt ml
   ];
   BEISPIELE.forEach(b => {
     const eintrag = KATALOG.find(k => k.katalogId === b.katalogId);
@@ -466,8 +496,9 @@
     treffer.forEach(k => {
       const li = document.createElement("li");
       li.innerHTML =
-        `<span class="vs-name">${k.produktname}</span><br>
-         <span class="vs-wirkstoff">${k.wirkstoff}</span>`;
+        `<span class="vs-name">${k.produktname}</span>` +
+        `<span class="vs-arzneiform">${k.arzneiform}</span><br>` +
+        `<span class="vs-wirkstoff">${k.wirkstoff}</span>`;
       li.onmousedown = () => vorschlagWaehlen(k);
       liste.appendChild(li);
     });
@@ -487,11 +518,11 @@
     document.getElementById("medSuche").value = katalogEintrag.produktname;
     document.getElementById("vorschlaege").classList.remove("offen");
 
-    // Einheitenfeld: nur bei flüssigen Medikamenten anzeigen
+    // Einheitenfeld: nur bei Flaschen/Tropfenpräparaten anzeigen.
+    // Ampullen, Tabletten, Kapseln und Pflaster werden immer als "Stk" geführt.
     const einheitFeld = document.getElementById("einheitFeld");
     const einheitSel  = document.getElementById("neuEinheit");
-    if (katalogEintrag.fluessig) {
-      // Nur ml und Trpf für Flüssigkeiten
+    if (katalogEintrag.arzneiform === "Flasche") {
       einheitSel.innerHTML =
         '<option value="ml">ml</option><option value="Trpf">Trpf</option>';
       einheitFeld.style.display = "";
@@ -523,15 +554,17 @@
 
   // ================================================================
   // Medikament anlegen (intern)
-  // einheit: "ml" | "Trpf" | "Stk"
+  // einheit:    "ml" | "Trpf" | "Stk"
+  // arzneiform: "Pflaster" | "Ampulle" | "Tablette" | "Kapsel" | "Flasche" | "—"
   // ================================================================
   function medikamentAnlegen(eintrag, startbestand, einheit) {
     const gewaehlteEinheit = einheit || "Stk";
     patientenMedikamente.push({
       id:          naechsteId++,
-      katalogId:   eintrag.katalogId || null,
+      katalogId:   eintrag.katalogId   || null,
+      arzneiform:  eintrag.arzneiform  || "—",
       produktname: eintrag.produktname,
-      wirkstoff:   eintrag.wirkstoff || "(Freitext – nicht im Katalog)",
+      wirkstoff:   eintrag.wirkstoff   || "(Freitext – nicht im Katalog)",
       einheit:     gewaehlteEinheit,
       bestand:     startbestand,
       protokoll:   startbestand > 0
@@ -572,8 +605,9 @@
     let einheit;
     if (suchAuswahl.type === "katalog") {
       eintrag = KATALOG.find(k => k.katalogId === suchAuswahl.katalogId);
-      // Flüssig → Einheit aus Select; fest → immer "Stk"
-      einheit = eintrag.fluessig
+      // Flasche/Tropfenpräparat → Einheit aus Select (ml / Trpf)
+      // Alle anderen Arzneiformen → immer "Stk"
+      einheit = eintrag.arzneiform === "Flasche"
         ? document.getElementById("neuEinheit").value
         : "Stk";
     } else {
@@ -583,7 +617,7 @@
         fehlerDiv.textContent = "Dieses Medikament ist bereits in der Liste.";
         return;
       }
-      eintrag = { katalogId: null, produktname: suchAuswahl.name, wirkstoff: "" };
+      eintrag = { katalogId: null, arzneiform: "—", produktname: suchAuswahl.name, wirkstoff: "" };
       einheit = document.getElementById("neuEinheit").value || "Stk";
     }
 
@@ -633,6 +667,7 @@
     const med   = medById(medId);
 
     document.getElementById("detailProduktname").textContent = med.produktname;
+    document.getElementById("detailArzneiform").textContent  = med.arzneiform;
     document.getElementById("detailWirkstoff").textContent   = med.wirkstoff;
     document.getElementById("detailBestand").textContent     = med.bestand;
     document.getElementById("detailEinheit").textContent     = med.einheit;
