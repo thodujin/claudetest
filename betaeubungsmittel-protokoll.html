@@ -557,7 +557,8 @@
   // In einem echten System kämen diese aus der Session / dem Auth-Token.
   // ================================================================
   const EINGELOGGTER_BENUTZER    = "s.huber";
-  const TAGESVERANTWORTLICHE     = "TV / Fallführung";   // Simuliert für Benachrichtigungen
+  const TAGESVERANTWORTLICHE     = "TV";           // Simuliert für Benachrichtigungen
+  const FALLFUEHRUNG             = "Fallführung";  // Simuliert für Benachrichtigungen
 
   // ================================================================
   // DATENMODELL
@@ -1144,6 +1145,11 @@
 
     erstelleNachricht(
       TAGESVERANTWORTLICHE,
+      `Bestandsunstimmigkeit: ${med.produktname}`,
+      nachrichtText
+    );
+    erstelleNachricht(
+      FALLFUEHRUNG,
       `Bestandsunstimmigkeit: ${med.produktname}`,
       nachrichtText
     );
