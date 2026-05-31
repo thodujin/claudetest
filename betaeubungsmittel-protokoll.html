@@ -377,7 +377,7 @@
       <!-- Einheitenauswahl: nur für flüssige Medikamente sichtbar -->
       <div class="feld schmal" id="einheitFeld" style="display:none;">
         <label for="neuEinheit">Einheit</label>
-        <select id="neuEinheit">
+        <select id="neuEinheit" onchange="aktualisiereStartbestandLabel(this.value)">
           <option value="ml">ml</option>
           <option value="Trpf">Trpf</option>
           <option value="Stk">Stk</option>
@@ -385,8 +385,8 @@
       </div>
 
       <div class="feld schmal">
-        <label for="neuStartbestand">Startbestand (optional)</label>
-        <input type="number" id="neuStartbestand" min="0" step="1" placeholder="0" />
+        <label for="neuStartbestand">Startbestand (<span id="neuStartbestandEinheit">Stk</span>) (optional)</label>
+        <input type="number" id="neuStartbestand" min="0" step="any" placeholder="0" />
       </div>
       <button class="btn" onclick="medikamentHinzufuegen()">Hinzufügen</button>
       <div class="fehler" id="neuFehler"></div>
@@ -435,20 +435,6 @@
   <div id="abgeschlossenBanner" class="abgeschlossen-banner" style="display:none;">
     <strong>⏹ Medikament abgeschlossen</strong>
     <span id="abgeschlossenInfo" style="display:block; margin-top:3px;"></span>
-  </div>
-
-  <!-- Einheitenumschaltung (nur für Flaschen / Tropfenpräparate) -->
-  <div id="einheitToggleBereich" style="display:none; margin-bottom:0.8rem; font-size:13px;">
-    Dokumentationseinheit wählen: &nbsp;
-    <label style="cursor:pointer;">
-      <input type="radio" name="einheitToggle" id="toggleMl" value="ml"
-             onchange="einheitWechseln('ml')" /> ml
-    </label>
-    &nbsp;&nbsp;
-    <label style="cursor:pointer;">
-      <input type="radio" name="einheitToggle" id="toggleTrpf" value="Trpf"
-             onchange="einheitWechseln('Trpf')" /> Trpf (Tropfen)
-    </label>
   </div>
 
   <!-- Buchungsformulare -->
@@ -524,7 +510,7 @@
         </div>
         <div class="feld">
           <label style="font-size:12px; font-weight:bold;">Kommentar (optional)</label>
-          <textarea id="unstimmKommentar" rows="2"
+          <textarea id="unstimmKommentar" rows="5"
                     placeholder="z. B. Übergabekontrolle – Ampulle fehlt ohne Dokumentation"></textarea>
         </div>
         <div class="btn-reihe">
@@ -741,8 +727,10 @@
       einheitSel.innerHTML =
         '<option value="ml">ml</option><option value="Trpf">Trpf</option>';
       einheitFeld.style.display = "";
+      aktualisiereStartbestandLabel("ml");
     } else {
       einheitFeld.style.display = "none";
+      aktualisiereStartbestandLabel("Stk");
     }
   }
 
@@ -758,18 +746,14 @@
       '<option value="ml">ml</option>'   +
       '<option value="Trpf">Trpf</option>';
     document.getElementById("einheitFeld").style.display = "";
+    aktualisiereStartbestandLabel("Stk");
   }
 
-  // ================================================================
-  // Einheit wechseln (nur Flasche-Medikamente)
-  // ================================================================
-  function einheitWechseln(neueEinheit) {
-    const med = medById(aktiveMedId);
-    if (!med || med.arzneiform !== "Flasche") return;
-    med.einheit = neueEinheit;
-    aktualisiereEinheitUI(med);
-    // Bestandsanzeige Label aktualisieren
-    document.getElementById("detailEinheit").textContent = neueEinheit;
+  // Startbestand-Label mit gewählter Einheit synchronisieren
+  function aktualisiereStartbestandLabel(einheit) {
+    document.getElementById("neuStartbestandEinheit").textContent = einheit;
+    // step anpassen: ml erlaubt Dezimalzahlen
+    document.getElementById("neuStartbestand").step = einheit === "ml" ? "0.1" : "1";
   }
 
   function aktualisiereEinheitUI(med) {
@@ -928,16 +912,6 @@
     document.getElementById("detailBestand").textContent     = med.bestand;
     document.getElementById("detailEinheit").textContent     = med.einheit;
 
-    // Einheiten-Toggle: nur für Flasche anzeigen
-    const toggleBereich = document.getElementById("einheitToggleBereich");
-    if (med.arzneiform === "Flasche") {
-      toggleBereich.style.display = "";
-      // Radiobutton auf aktuelle Einheit setzen
-      document.getElementById(med.einheit === "ml" ? "toggleMl" : "toggleTrpf").checked = true;
-    } else {
-      toggleBereich.style.display = "none";
-    }
-
     // Menge-Inputs an Einheit anpassen
     aktualisiereEinheitUI(med);
 
@@ -1017,8 +991,8 @@
       let mengeZelle    = `${e.menge} ${eEinheit}`;
       let bestandZelle  = `${e.bestandNach} ${eEinheit}`;
       if (istUnstimmigkeit) {
-        mengeZelle   = `Gezählt: ${e.gezaehlt} ${eEinheit}`;
-        bestandZelle = `Diff: ${e.differenz > 0 ? "+" : ""}${e.differenz} ${eEinheit}`;
+        mengeZelle   = `Gezählt: ${e.gezaehlt} ${eEinheit} (Diff: ${e.differenz > 0 ? "+" : ""}${e.differenz})`;
+        bestandZelle = `${e.bestandNach} ${eEinheit}`;
       }
 
       // Storno-Button: nur bei normalen, nicht-stornier­ten Einträgen
@@ -1199,7 +1173,11 @@
       return;
     }
 
-    const differenz = Math.round((gezaehlt - med.bestand) * 10) / 10;
+    const altBestand = med.bestand;
+    const differenz  = Math.round((gezaehlt - altBestand) * 10) / 10;
+
+    // Bestand auf gezählten Wert korrigieren
+    med.bestand = gezaehlt;
 
     // Unstimmigkeitseintrag im Protokoll
     med.protokoll.push({
@@ -1211,7 +1189,7 @@
       menge:       0,
       gezaehlt,
       differenz,
-      bestandNach: med.bestand,   // Systembestand bleibt unverändert
+      bestandNach: gezaehlt,   // Bestand wird auf gezählten Wert gesetzt
       erfasser:    EINGELOGGTER_BENUTZER,
       storniert:   false,
       kommentar:   kommentar || null,
@@ -1227,9 +1205,10 @@
       `Medikament: ${med.produktname}\n` +
       `Gemeldet am: ${heuteDatum()} ${jetztUhrzeit()}\n` +
       `Gemeldet von: ${EINGELOGGTER_BENUTZER}\n` +
-      `Dokumentierter Bestand: ${med.bestand} ${med.einheit}\n` +
+      `Dokumentierter Bestand (vor Korrektur): ${altBestand} ${med.einheit}\n` +
       `Tatsächlich gezählt: ${gezaehlt} ${med.einheit}\n` +
-      `Differenz: ${differenz > 0 ? "+" : ""}${differenz} ${med.einheit}` +
+      `Differenz: ${differenz > 0 ? "+" : ""}${differenz} ${med.einheit}\n` +
+      `Bestand nach Korrektur: ${gezaehlt} ${med.einheit}` +
       (kommentar ? `\nKommentar: ${kommentar}` : "");
 
     erstelleNachricht(
@@ -1251,8 +1230,10 @@
     }
 
     // UI aktualisieren
+    document.getElementById("detailBestand").textContent = med.bestand;
     toggleUnstimmigkeitForm();
     renderProtokoll(med);
+    renderMedListe();
     renderPostfach();
   }
 
