@@ -287,6 +287,36 @@
     }
     /* ── Eingeloggter Benutzer (Kopf) ── */
     .benutzer-info { font-size: 12px; color: #555; margin-top: 3px; }
+
+    /* ── Abgeschlossene Medikamente ── */
+    tr.zeile-abgeschlossen td { color: #bbb; background: #fafafa; }
+    tr.zeile-abgeschlossen td.produktname { text-decoration: line-through; color: #bbb; font-weight: normal; }
+    tr.zeile-abgeschlossen:hover { background: #fafafa !important; cursor: default; }
+    .abg-badge {
+      display: inline-block;
+      font-size: 10px;
+      color: #fff;
+      background: #999;
+      padding: 1px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .abgeschlossen-banner {
+      border: 1px solid #bbb;
+      background: #f5f5f5;
+      color: #666;
+      padding: 0.6rem 1rem;
+      margin-bottom: 1rem;
+      font-size: 13px;
+    }
+    .abgeschlossen-banner strong { color: #555; }
+    .filter-toggle-zeile {
+      font-size: 12px;
+      margin-bottom: 0.5rem;
+      color: #555;
+    }
+    .filter-toggle-zeile label { cursor: pointer; }
+    .filter-toggle-zeile input { cursor: pointer; margin-right: 4px; }
   </style>
 </head>
 <body>
@@ -300,6 +330,14 @@
     <h1>Betäubungsmittelprotokoll</h1>
     <p>Betäubungsmittelübersicht Herr Pfister</p>
     <p class="benutzer-info">Eingeloggt als: <strong id="anzeigeBenutzername"></strong></p>
+  </div>
+
+  <!-- Filter -->
+  <div class="filter-toggle-zeile">
+    <label>
+      <input type="checkbox" id="filterAbgeschlossene" checked onchange="renderMedListe()" />
+      Abgeschlossene Medikamente anzeigen
+    </label>
   </div>
 
   <!-- Scrollbare Medikamentenliste -->
@@ -391,6 +429,12 @@
       Aktueller Bestand: <strong id="detailBestand">—</strong>
       <span id="detailEinheit">Einheiten</span>
     </span>
+  </div>
+
+  <!-- Abgeschlossen-Banner (nur sichtbar wenn Medikament abgeschlossen) -->
+  <div id="abgeschlossenBanner" class="abgeschlossen-banner" style="display:none;">
+    <strong>⏹ Medikament abgeschlossen</strong>
+    <span id="abgeschlossenInfo" style="display:block; margin-top:3px;"></span>
   </div>
 
   <!-- Einheitenumschaltung (nur für Flaschen / Tropfenpräparate) -->
@@ -490,6 +534,28 @@
         </div>
         <div class="fehler" id="unstimmFehler"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Medikament abschliessen -->
+  <div style="margin-bottom:0.8rem;" id="abschliessenBereich">
+    <button class="btn" id="abschliessenBtn" onclick="toggleAbschlussForm()"
+            style="border-color:#999; color:#666;">
+      ⏹ Medikament abschliessen
+    </button>
+    <div class="aktion-bereich" id="abschlussFormBereich" style="display:none; margin-top:0.5rem;">
+      <h4>Medikament abschliessen</h4>
+      <p style="font-size:12px; margin:0 0 0.5rem 0;">
+        Das Medikament wird als abgeschlossen markiert. Es können danach keine neuen Buchungen mehr erfasst werden.
+      </p>
+      <label style="font-size:12px; font-weight:bold;">Grund (Pflichtfeld)</label>
+      <textarea id="abschlussGrund" rows="2"
+                placeholder="z. B. Therapie beendet / Patient verstorben / Medikament gewechselt"></textarea>
+      <div class="btn-reihe">
+        <button class="btn" onclick="abschlussBestaetigen()">Abschliessen bestätigen</button>
+        <button class="btn" onclick="abschlussAbbrechen()">Abbrechen</button>
+      </div>
+      <div class="fehler" id="abschlussFehler"></div>
     </div>
   </div>
 
@@ -738,9 +804,13 @@
       arzneiform:  eintrag.arzneiform  || "—",
       produktname: eintrag.produktname,
       wirkstoff:   eintrag.wirkstoff   || "(Freitext – nicht im Katalog)",
-      einheit:     gewaehlteEinheit,
-      bestand:     startbestand,
-      protokoll:   startbestand > 0
+      einheit:          gewaehlteEinheit,
+      bestand:          startbestand,
+      abgeschlossen:    false,
+      abgeschlossenAm:  null,
+      abgeschlossenVon: null,
+      abschlussGrund:   null,
+      protokoll:        startbestand > 0
         ? [{
             eintragId:   naechsteEintragId++,
             datum:       heuteDatum(),
@@ -814,7 +884,10 @@
     const tbody = document.getElementById("medListeBody");
     tbody.innerHTML = "";
 
-    if (patientenMedikamente.length === 0) {
+    const zeigeAbg = document.getElementById("filterAbgeschlossene").checked;
+    const sichtbar = patientenMedikamente.filter(m => !m.abgeschlossen || zeigeAbg);
+
+    if (sichtbar.length === 0) {
       tbody.innerHTML =
         `<tr><td colspan="4" class="kein-eintrag">
            Keine Betäubungsmittel hinterlegt.
@@ -822,14 +895,21 @@
       return;
     }
 
-    patientenMedikamente.forEach(med => {
+    sichtbar.forEach(med => {
       const tr = document.createElement("tr");
-      tr.onclick = () => zeigeDetail(med.id);
+      if (med.abgeschlossen) {
+        tr.classList.add("zeile-abgeschlossen");
+        tr.onclick = () => zeigeDetail(med.id);
+      } else {
+        tr.onclick = () => zeigeDetail(med.id);
+      }
+      const abgBadge = med.abgeschlossen
+        ? `<span class="abg-badge">Abgeschlossen</span>` : "";
       tr.innerHTML = `
-        <td class="produktname">${med.produktname}</td>
+        <td class="produktname">${med.produktname}${abgBadge}</td>
         <td class="wirkstoff">${med.wirkstoff}</td>
         <td class="bestand">${med.bestand} ${med.einheit}</td>
-        <td style="color:#777; font-size:12px;">▶ öffnen</td>
+        <td style="color:#bbb; font-size:12px;">${med.abgeschlossen ? "" : "▶ öffnen"}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -875,9 +955,13 @@
     document.getElementById("unstimmEinheit").textContent = med.einheit;
 
     // Eventuell offene Aktionsformulare schliessen
-    document.getElementById("stornoFormBereich").style.display    = "none";
+    document.getElementById("stornoFormBereich").style.display        = "none";
     document.getElementById("unstimmigkeitFormBereich").style.display = "none";
+    document.getElementById("abschlussFormBereich").style.display     = "none";
     aktiveStornoId = null;
+
+    // Abgeschlossen-Zustand anzeigen
+    aktualisiereAbschlussUI(med);
 
     document.getElementById("seiteUebersicht").classList.remove("aktiv");
     document.getElementById("seiteDetail").classList.add("aktiv");
@@ -977,6 +1061,11 @@
 
     const mengeRaw = document.getElementById(mengeId).value;
     const med      = medById(aktiveMedId);
+
+    if (med.abgeschlossen) {
+      fehlerDiv.textContent = "Dieses Medikament ist abgeschlossen. Keine neuen Buchungen möglich.";
+      return;
+    }
     const istMl    = med.einheit === "ml";
 
     // Für ml Dezimalwerte erlauben, sonst nur ganze Zahlen
@@ -1220,6 +1309,70 @@
   function nachrichtAlsGelesenMarkieren(id) {
     const n = POSTFACH.find(m => m.id === id);
     if (n) { n.gelesen = true; renderPostfach(); }
+  }
+
+  // ================================================================
+  // MEDIKAMENT ABSCHLIESSEN
+  // ================================================================
+
+  function aktualisiereAbschlussUI(med) {
+    const banner     = document.getElementById("abgeschlossenBanner");
+    const info       = document.getElementById("abgeschlossenInfo");
+    const abschlBtn  = document.getElementById("abschliessenBtn");
+    const buchungBox = document.querySelector(".buchung-bereich");
+
+    if (med.abgeschlossen) {
+      banner.style.display    = "";
+      info.textContent =
+        `Abgeschlossen am ${med.abgeschlossenAm} von ${med.abgeschlossenVon}` +
+        ` · Grund: ${med.abschlussGrund}`;
+      abschlBtn.style.display = "none";
+      // Buchungsformular deaktivieren
+      buchungBox.style.opacity      = "0.4";
+      buchungBox.style.pointerEvents = "none";
+    } else {
+      banner.style.display    = "none";
+      abschlBtn.style.display = "";
+      buchungBox.style.opacity      = "";
+      buchungBox.style.pointerEvents = "";
+    }
+  }
+
+  function toggleAbschlussForm() {
+    const bereich = document.getElementById("abschlussFormBereich");
+    const offen   = bereich.style.display !== "none";
+    bereich.style.display = offen ? "none" : "";
+    if (!offen) {
+      document.getElementById("abschlussGrund").value      = "";
+      document.getElementById("abschlussFehler").textContent = "";
+    }
+  }
+
+  function abschlussAbbrechen() {
+    document.getElementById("abschlussFormBereich").style.display = "none";
+    document.getElementById("abschlussGrund").value      = "";
+    document.getElementById("abschlussFehler").textContent = "";
+  }
+
+  function abschlussBestaetigen() {
+    const grund     = document.getElementById("abschlussGrund").value.trim();
+    const fehlerDiv = document.getElementById("abschlussFehler");
+    fehlerDiv.textContent = "";
+
+    if (!grund) {
+      fehlerDiv.textContent = "Bitte einen Grund eingeben.";
+      return;
+    }
+
+    const med             = medById(aktiveMedId);
+    med.abgeschlossen     = true;
+    med.abgeschlossenAm   = `${heuteDatum()} ${jetztUhrzeit()}`;
+    med.abgeschlossenVon  = EINGELOGGTER_BENUTZER;
+    med.abschlussGrund    = grund;
+
+    document.getElementById("abschlussFormBereich").style.display = "none";
+    aktualisiereAbschlussUI(med);
+    renderMedListe();
   }
 
   // ================================================================
