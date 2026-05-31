@@ -437,11 +437,25 @@
     <span id="abgeschlossenInfo" style="display:block; margin-top:3px;"></span>
   </div>
 
+  <!-- Einheitenumschaltung (nur für Flaschen) -->
+  <div id="einheitToggleBereich" style="display:none; margin-bottom:0.8rem; font-size:13px;">
+    Dokumentationseinheit wählen: &nbsp;
+    <label style="cursor:pointer;">
+      <input type="radio" name="einheitToggle" id="toggleMl" value="ml"
+             onchange="einheitWechseln('ml')" /> ml
+    </label>
+    &nbsp;&nbsp;
+    <label style="cursor:pointer;">
+      <input type="radio" name="einheitToggle" id="toggleTrpf" value="Trpf"
+             onchange="einheitWechseln('Trpf')" /> Trpf (Tropfen) — <em style="color:#777; font-size:12px;">nur Entnahme</em>
+    </label>
+  </div>
+
   <!-- Buchungsformulare -->
   <div class="buchung-bereich">
 
     <!-- Zugang -->
-    <div class="buchung-box">
+    <div class="buchung-box" id="zugangBox">
       <h3>+ Zugang erfassen</h3>
       <div class="inline-form" style="flex-direction:column; gap:0.4rem;">
         <div class="feld">
@@ -749,6 +763,18 @@
     aktualisiereStartbestandLabel("Stk");
   }
 
+  // ================================================================
+  // Einheit wechseln (nur Flasche-Medikamente)
+  // Trpf-Modus: Zugang gesperrt, nur Entnahme möglich.
+  // ================================================================
+  function einheitWechseln(neueEinheit) {
+    const med = medById(aktiveMedId);
+    if (!med || med.arzneiform !== "Flasche") return;
+    med.einheit = neueEinheit;
+    aktualisiereEinheitUI(med);
+    document.getElementById("detailEinheit").textContent = neueEinheit;
+  }
+
   // Startbestand-Label mit gewählter Einheit synchronisieren
   function aktualisiereStartbestandLabel(einheit) {
     document.getElementById("neuStartbestandEinheit").textContent = einheit;
@@ -757,7 +783,13 @@
   }
 
   function aktualisiereEinheitUI(med) {
-    const istMl = med.einheit === "ml";
+    const istMl   = med.einheit === "ml";
+    const istTrpf = med.einheit === "Trpf";
+
+    // Zugang nur in ml erlaubt — bei Trpf-Modus ausblenden
+    const zugangBox = document.getElementById("zugangBox");
+    if (zugangBox) zugangBox.style.display = istTrpf ? "none" : "";
+
     ["zugMenge", "entMenge"].forEach(id => {
       const inp = document.getElementById(id);
       inp.step        = istMl ? "0.1" : "1";
@@ -911,6 +943,15 @@
     document.getElementById("detailWirkstoff").textContent   = med.wirkstoff;
     document.getElementById("detailBestand").textContent     = med.bestand;
     document.getElementById("detailEinheit").textContent     = med.einheit;
+
+    // Einheiten-Toggle: nur für Flasche anzeigen
+    const toggleBereich = document.getElementById("einheitToggleBereich");
+    if (med.arzneiform === "Flasche") {
+      toggleBereich.style.display = "";
+      document.getElementById(med.einheit === "ml" ? "toggleMl" : "toggleTrpf").checked = true;
+    } else {
+      toggleBereich.style.display = "none";
+    }
 
     // Menge-Inputs an Einheit anpassen
     aktualisiereEinheitUI(med);
