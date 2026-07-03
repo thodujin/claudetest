@@ -465,6 +465,11 @@
           <input type="number" id="zugMenge" min="0.001" step="1"
                  placeholder="z. B. 10" style="min-width:0;" />
         </div>
+        <div class="feld">
+          <label for="zugNotiz">Notiz (optional)</label>
+          <input type="text" id="zugNotiz" placeholder="z. B. Schachtel 1"
+                 style="min-width:0;" maxlength="80" />
+        </div>
         <button class="btn" onclick="buchen('Zugang')">Zugang buchen</button>
         <div class="fehler" id="zugFehler"></div>
       </div>
@@ -570,6 +575,7 @@
           <th class="zahl">Menge</th>
           <th class="zahl">Bestand nach Buchung</th>
           <th>Erfasser</th>
+          <th>Notiz</th>
           <th></th>
         </tr>
       </thead>
@@ -1004,7 +1010,7 @@
     if (med.protokoll.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" style="color:#999; font-style:italic; font-size:12px;">
+          <td colspan="8" style="color:#999; font-style:italic; font-size:12px;">
             Noch keine Buchungen vorhanden.
           </td>
         </tr>`;
@@ -1049,6 +1055,10 @@
           ? `<br><span style="font-size:11px; color:#888;">${e.kommentar}</span>`
           : "");
 
+      const notizZelle = e.notiz
+        ? `<span style="font-size:12px; color:#555;">${e.notiz}</span>`
+        : "";
+
       tr.innerHTML = `
         <td>${e.datum}</td>
         <td>${e.uhrzeit}</td>
@@ -1056,6 +1066,7 @@
         <td class="zahl">${mengeZelle}</td>
         <td class="zahl">${bestandZelle}</td>
         <td>${e.erfasser}</td>
+        <td>${notizZelle}</td>
         <td>${aktionsZelle}</td>
       `;
       tbody.appendChild(tr);
@@ -1100,6 +1111,10 @@
     // Auf eine Nachkommastelle runden um Float-Ungenauigkeiten zu vermeiden
     med.bestand = Math.round((med.bestand + (istZugang ? menge : -menge)) * 10) / 10;
 
+    const notiz = istZugang
+      ? (document.getElementById("zugNotiz").value.trim() || null)
+      : null;
+
     med.protokoll.push({
       eintragId:   naechsteEintragId++,
       datum:       heuteDatum(),
@@ -1110,6 +1125,7 @@
       bestandNach: med.bestand,
       erfasser:    EINGELOGGTER_BENUTZER,
       storniert:   false,
+      notiz,
     });
 
     document.getElementById("detailBestand").textContent = med.bestand;
@@ -1117,6 +1133,7 @@
     renderProtokoll(med);
 
     document.getElementById(mengeId).value = "";
+    if (istZugang) document.getElementById("zugNotiz").value = "";
   }
 
   // ================================================================
