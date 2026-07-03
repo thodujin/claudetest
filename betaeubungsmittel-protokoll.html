@@ -1111,9 +1111,15 @@
     // Auf eine Nachkommastelle runden um Float-Ungenauigkeiten zu vermeiden
     med.bestand = Math.round((med.bestand + (istZugang ? menge : -menge)) * 10) / 10;
 
+    // Zugang: Notiz aus Formular; Entnahme: Notiz vom letzten gültigen Zugang übernehmen
     const notiz = istZugang
       ? (document.getElementById("zugNotiz").value.trim() || null)
-      : null;
+      : (() => {
+          const letzterZugang = [...med.protokoll]
+            .reverse()
+            .find(e => e.typ === "Zugang" && e.notiz && !e.storniert);
+          return letzterZugang ? letzterZugang.notiz : null;
+        })();
 
     med.protokoll.push({
       eintragId:   naechsteEintragId++,
