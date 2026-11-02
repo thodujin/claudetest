@@ -63,7 +63,7 @@ h1.q { font-size: clamp(30px, 5vw, 52px); line-height: 1.1; margin: 0; }
 .pause .box { background: var(--surface); border: 3px solid var(--focus); border-radius: 16px; padding: 32px; max-width: 34ch; }
 .pause .box strong { display: block; font-size: clamp(26px, 4vw, 40px); margin-bottom: 10px; }
 .pause .box span { font-size: 20px; color: var(--muted); }
-.calib { background: var(--bg); }
+.calib { background: var(--bg); cursor: none; }
 .calib .dot { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: var(--focus); box-shadow: 0 0 0 10px var(--focus-tint); }
 .calib p { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font-size: 22px; color: var(--muted); padding: 0 16px; }
 .calib .prog { position: absolute; inset: auto 0 12% 0; text-align: center; font-family: var(--font-mono); color: var(--muted); }
@@ -168,9 +168,9 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
           <label for="optBeep"><input type="checkbox" id="optBeep" checked> Ton bei langem Blinzeln</label>
         </div>
         <div class="row">
-          <label for="optGaze"><input type="checkbox" id="optGaze"> Blick per Kamera (experimentell)</label>
-          <select id="calMode" aria-label="Kalibriermodus"><option value="head">Kopf und Augen</option><option value="eyes">Nur Augen</option></select>
-          <button type="button" id="btnCalib">Kalibrieren</button>
+          <button type="button" id="btnCalib">Blick kalibrieren</button>
+          <label for="optGaze"><input type="checkbox" id="optGaze"> Blick per Kamera</label>
+          <label for="calN">Punkte <select id="calN"><option value="9">9</option><option value="13" selected>13</option></select></label>
           <button type="button" id="btnCenter"><kbd>C</kbd>Mitte nachjustieren</button>
           <label for="optDot"><input type="checkbox" id="optDot"> Blickpunkt zeigen</label>
         </div>
@@ -239,11 +239,11 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
 
 <div class="help" id="help" hidden role="dialog" aria-label="Anleitung">
   <div class="card">
-    <h2>So funktioniert die Hybridversion</h2>
+    <h2>So funktioniert der Prototyp</h2>
     <ol>
       <li><b>Kamera starten</b> und den Zugriff erlauben. Die Testperson so legen, dass ihr Gesicht gut im Bild ist.</li>
       <li><b>Langes Blinzeln wird echt erkannt:</b> Augen länger als «Lang ab» geschlossen, dann öffnen. Bei aktivem Ton piept es, sobald die Dauer erreicht ist.</li>
-      <li><b>Blick:</b> Standard ist der Wizard mit Pfeiltasten (Feld markieren, wenn der Blick etwa 1 Sekunde darauf ruht). Experimentell: Kalibrieren, dann «Blick per Kamera» einschalten.</li>
+      <li><b>Blick per Kamera:</b> Kamera starten, dann «Blick kalibrieren». Die Seite geht in den Vollbildmodus; die Testperson schaut 9 oder 13 Punkte an, bis sie grün werden, danach 3 Kontrollpunkte. Die mittlere Abweichung steht unter «Kamera». Danach ist «Blick per Kamera» an: Das Feld unter dem Blick wird gestrichelt, nach etwa 0,7 s fest markiert. Verrutscht der Blick, <kbd>C</kbd> drücken und die Mitte anschauen. <kbd>Esc</kbd> bricht die Kalibrierung ab. Bei Bedarf markiert der Wizard weiterhin mit den Pfeiltasten.</li>
       <li><b>Gesicht nicht im Bild:</b> Pause wird automatisch gesetzt. Zweite Pause im Durchgang: Abtastmodus anbieten (<kbd>A</kbd>). Im Abtastmodus braucht es nur noch Blinzeln, alles ist echt.</li>
       <li><b>Leertaste</b> bleibt als Notfall für den Wizard, falls die Kamera ein Blinzeln verpasst. Im Protokoll steht, ob Kamera oder Wizard ausgelöst hat.</li>
       <li><b>Durchgang 2:</b> einmal <kbd>F</kbd> für den simulierten Fehler.</li>
@@ -365,7 +365,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     const camOn = cam.on;
     const blinkTxt = camOn ? 'Blinzeln: Kamera (echt), Leertaste = Wizard' : 'Blinzeln: Wizard (Leertaste)';
     const markTxt = S.scan ? 'Markierung: Abtastmodus (automatisch, kein Blick)'
-      : $('optGaze').checked ? 'Markierung: Blick per Kamera (experimentell), Pfeiltasten = Wizard'
+      : $('optGaze').checked ? 'Markierung: Blick per Kamera (WebGazer, echt), Pfeiltasten = Wizard'
       : 'Markierung: Wizard (Pfeiltasten) – Blick wird simuliert';
     const pauseTxt = camOn && $('optPause').checked ? 'Pause: Kamera (echt) oder P' : 'Pause: Wizard (P)';
     const simTxt = S.cnt.sim ? ` · simulierte Fehler in D${S.run}: ${S.cnt.sim}` : '';
@@ -498,7 +498,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   /* ---------- Kamera: MediaPipe Face Landmarker ---------- */
   // closedSince: Beginn der aktuellen Lidschliessung · openSince: erstes Bild mit offenen Augen (Entprellung)
   // snap: Schnappschuss der festen Markierung, sobald sich die Augen zu schliessen beginnen
-  const cam = { on: false, lm: null, video: $('video'), lastVT: -1, closedSince: 0, openSince: 0, beeped: false, overBeeped: false, faceGoneSince: 0, faceBackSince: 0, reopenAt: 0, snap: null,
+  const cam = { on: false, lm: null, video: $('video'), lastVT: -1, closedSince: 0, openSince: 0, beeped: false, overBeeped: false, faceGoneSince: 0, faceBackSince: 0, reopenAt: 0, snap: null, gazeOk: false, stream: null,
     n: { long: 0, short: 0, tooLong: 0, gone: 0 } };
   const OPEN_CONFIRM_MS = 60;   // so lange müssen die Augen offen sein, damit eine Schliessung als beendet gilt
   const HYST = 0.1;             // Hysterese: geschlossen ab Schwelle, wieder offen erst unter Schwelle minus HYST
@@ -533,7 +533,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
-      cam.video.srcObject = stream; await cam.video.play();
+      cam.stream = stream; cam.video.srcObject = stream; await cam.video.play();
     } catch (e) {
       setCamChip('Kamera nicht erlaubt', 'bad'); $('btnCam').disabled = false;
       $('camNote').textContent = 'Kein Kamerazugriff. Im Browser die Kamera für diese Seite erlauben, sonst über einen lokalen Server öffnen (siehe Anleitung). Die Tastatur funktioniert weiter.';
@@ -569,7 +569,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       if (!cam.faceGoneSince) cam.faceGoneSince = now;
       if (now - cam.faceGoneSince > 700 && $('optPause').checked && !S.paused && ACTIVE.includes(S.screen) && !S.test) { cam.n.gone++; S.cnt.gone++; showCounts(); setPause(true, 'cam'); }
       // Eine laufende Schliessung verfällt: ohne Gesicht wird nie gewählt
-      cam.closedSince = 0; cam.openSince = 0; cam.beeped = false; cam.overBeeped = false; cam.snap = null;
+      cam.closedSince = 0; cam.openSince = 0; cam.beeped = false; cam.overBeeped = false; cam.snap = null; cam.gazeOk = false;
       return;
     }
     cam.faceGoneSince = 0;
@@ -604,10 +604,8 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       }
     }
     // Blick nur bei sicher offenen Augen auswerten; danach Schnappschuss freigeben
-    if (!closing && !cam.closedSince && now - cam.reopenAt > 300) {
-      cam.snap = null; gz.closing = false;
-      gazeFrame(features(cats, res), now);
-    } else gz.closing = true;
+    cam.gazeOk = !closing && !cam.closedSince && now - cam.reopenAt > 300;
+    if (cam.gazeOk) cam.snap = null;
   }
 
   function onLongBlink(d) {
@@ -625,65 +623,86 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     blink('cam');
   }
 
-  /* ---------- Experimentelle Blickerkennung ---------- */
-  // Merkmale: Irisposition relativ zu den Lidwinkeln, Kopfdrehung und Kopfneigung, Blickwerte der Gesichtserkennung.
-  // Kalibrierung: 9 Punkte, lineare Regression (Ridge) je Achse, danach Kontrolle an 3 neuen Punkten.
-  const gz = { model: null, x: 0.5, y: 0.5, dx: 0, dy: 0, hist: [], votes: [], sampling: null, busy: false, stable: null };
-  function features(cats, res) {
-    const L = res && res.faceLandmarks && res.faceLandmarks[0];
-    if (!L || L.length < 478) return null;
-    const ratio = (iris, a, b) => (iris - a) / ((b - a) || 1e-6);
-    const rH = ratio(L[468].x, L[33].x, L[133].x), lH = ratio(L[473].x, L[362].x, L[263].x);
-    // vertikal relativ zur Linie der Augenwinkel, geteilt durch Augenbreite (unabhängig von den Lidern)
-    const vrel = (iris, a, b) => { const cy = (L[a].y + L[b].y) / 2, w = Math.hypot(L[b].x - L[a].x, L[b].y - L[a].y) || 1e-6; return (L[iris].y - cy) / w; };
-    const rV = vrel(468, 33, 133), lV = vrel(473, 362, 263);
-    let yaw = 0, pitch = 0;
-    const M = res.facialTransformationMatrixes && res.facialTransformationMatrixes[0];
-    if (M && M.data) { const d = M.data; yaw = Math.atan2(d[8], d[10]); pitch = Math.asin(Math.max(-1, Math.min(1, -d[9]))); }
-    const bh = (bs(cats, 'eyeLookOutRight') + bs(cats, 'eyeLookInLeft')) - (bs(cats, 'eyeLookInRight') + bs(cats, 'eyeLookOutLeft'));
-    const bv = (bs(cats, 'eyeLookUpLeft') + bs(cats, 'eyeLookUpRight')) - (bs(cats, 'eyeLookDownLeft') + bs(cats, 'eyeLookDownRight'));
-    return [(rH + lH) / 2, (rV + lV) / 2, yaw, pitch, bh, bv];
+  /* ---------- Blicksteuerung mit WebGazer ---------- */
+  // WebGazer schätzt den Blickpunkt aus Bildausschnitten der Augen (Ridge-Regression).
+  // Kamera: WebGazer bekommt per setStaticVideo() denselben MediaStream wie MediaPipe – ein Strom, ein Kamerazugriff.
+  // MediaPipe bleibt für Blinzeln und «Gesicht weg» zuständig und sagt WebGazer, wann die Augen sicher offen sind.
+  const WG_VER = '3.5.3';
+  const WG_BASE = `https://cdn.jsdelivr.net/npm/webgazer@${WG_VER}/dist`;
+  const CAL_WINDOW = 400;   // WebGazer behält standardmässig nur die letzten 50 Proben – zu wenig für 13 Punkte
+  const gz = { wg: null, loading: null, ready: false, calibrated: false, x: 0.5, y: 0.5, dx: 0, dy: 0, hist: [], votes: [], collect: null, busy: false, near: null, vw: 0, vh: 0, n: 0, lastT: 0 };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const median = a => { const v = [...a].sort((p, q) => p - q); return v.length ? v[v.length >> 1] : NaN; };
+
+  function loadScript(src) {
+    return new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = () => rej(new Error('Skript nicht geladen: ' + src)); document.head.appendChild(el); });
   }
-  function solve(A, b) { // Gauss mit Pivot
-    const n = b.length, M = A.map((r, i) => [...r, b[i]]);
-    for (let c = 0; c < n; c++) {
-      let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
-      [M[c], M[p]] = [M[p], M[c]];
-      const v = M[c][c] || 1e-9;
-      for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c] / v; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
-    }
-    return M.map((r, i) => r[n] / (r[i] || 1e-9));
+  function resetModel() {
+    // statt webgazer.clearData(): das würde localforage.clear() aufrufen und eine (leere) IndexedDB anlegen
+    const DW = gz.wg.util.DataWindow;
+    gz.wg.getRegression().forEach(r => {
+      r.init();
+      ['errorXArray', 'errorYArray', 'screenXClicksArray', 'screenYClicksArray', 'eyeFeaturesClicks', 'dataClicks'].forEach(k => { r[k] = new DW(CAL_WINDOW); });
+    });
   }
-  function fit(samples) { // samples: [{f, x, y}]
-    const k = samples[0].f.length;
-    const mu = Array(k).fill(0), sd = Array(k).fill(0);
-    samples.forEach(s => s.f.forEach((v, i) => mu[i] += v / samples.length));
-    samples.forEach(s => s.f.forEach((v, i) => sd[i] += (v - mu[i]) ** 2 / samples.length));
-    for (let i = 0; i < k; i++) sd[i] = Math.sqrt(sd[i]) || 1;
-    const z = f => [...f.map((v, i) => (v - mu[i]) / sd[i]), 1];
-    const X = samples.map(s => z(s.f)), K = k + 1, lam = 0.5;
-    const XtX = Array.from({ length: K }, (_, i) => Array.from({ length: K }, (_, j) => X.reduce((a, r) => a + r[i] * r[j], 0) + (i === j && i < k ? lam : 0)));
-    const wx = solve(XtX, Array.from({ length: K }, (_, i) => X.reduce((a, r, n) => a + r[i] * samples[n].x, 0)));
-    const wy = solve(XtX, Array.from({ length: K }, (_, i) => X.reduce((a, r, n) => a + r[i] * samples[n].y, 0)));
-    return f => { const v = z(f); return [v.reduce((a, c, i) => a + c * wx[i], 0), v.reduce((a, c, i) => a + c * wy[i], 0)]; };
+  async function ensureGazer() {
+    if (gz.ready) return true;
+    if (gz.loading) return gz.loading;
+    gz.loading = (async () => {
+      setCamChip('Lade Blickmodell…', 'warn');
+      try {
+        if (!window.webgazer) await loadScript(WG_BASE + '/webgazer.js');
+        const wg = window.webgazer; gz.wg = wg;
+        Object.assign(wg.params, {
+          faceMeshSolutionPath: WG_BASE + '/mediapipe/face_mesh',   // Standard wäre ./mediapipe/… relativ zur Seite
+          saveDataAcrossSessions: false,                             // nichts im Browser speichern
+          showVideo: false, showVideoPreview: false, showFaceOverlay: false, showFaceFeedbackBox: false, showGazeDot: false
+        });
+        wg.setRegression('ridge').applyKalmanFilter(true).setStaticVideo(cam.stream).setGazeListener(onGaze);
+        // begin() warnt per alert(), wenn die Seite nicht über «localhost» läuft (z. B. 127.0.0.1) – unnötig, Kamera ist erlaubt
+        const al = window.alert; window.alert = () => {};
+        try { wg.begin(); } finally { window.alert = al; }
+        wg.removeMouseEventListeners();   // Mausbewegungen und Klicks dürfen das Modell nicht nachtrainieren
+        const t0 = performance.now();
+        while (!(wg.isReady() && wg.getTracker() && wg.getTracker().detector)) {
+          if (performance.now() - t0 > 45000) throw new Error('Zeitüberschreitung beim Laden des Blickmodells');
+          await sleep(200);
+        }
+        gz.ready = true; setCamChip('Kamera an', 'on');
+        log(`WebGazer ${WG_VER} bereit (gemeinsamer Kamerastrom)`, 'cam');
+        return true;
+      } catch (e) {
+        gz.loading = null; setCamChip('Kamera an', 'on');
+        $('camNote').textContent = 'Blickmodell konnte nicht geladen werden (' + (e && e.message || e) + '). Wizard und Blinzeln funktionieren weiter.';
+        log('WebGazer nicht geladen: ' + (e && e.message || e), 'cam');
+        return false;
+      }
+    })();
+    return gz.loading;
   }
-  function gazeFrame(f, now) {
-    if (!f) return;
-    if (gz.sampling) { gz.sampling.push(f); return; }
-    if (!gz.model) return;
-    let [mx, my] = gz.model(f);
-    mx += gz.dx; my += gz.dy;
+
+  // Jede Schätzung von WebGazer (Pixel im Fenster)
+  function onGaze(data) {
+    if (!data) return;
+    gz.n++; gz.lastT = performance.now();
+    const x = data.x / innerWidth, y = data.y / innerHeight;
+    if (gz.collect) { if (cam.gazeOk) gz.collect.push([x, y]); return; }
+    if (!gz.calibrated || !cam.gazeOk) return;   // Augen schliessen sich oder Gesicht weg: Blickpunkt friert ein
+    gazePoint(x + gz.dx, y + gz.dy, gz.lastT);
+  }
+
+  function clearNear() { gz.votes = []; gz.near = null; stage.querySelectorAll('.target.near').forEach(e => e.classList.remove('near')); }
+  function gazePoint(mx, my, now) {
     gz.hist.push({ t: now, x: mx, y: my });
     const win = num('smoothMs', 350);
     while (gz.hist.length > 1 && now - gz.hist[0].t > win) gz.hist.shift();
-    const xs = gz.hist.map(p => p.x).sort((p, q) => p - q), ys = gz.hist.map(p => p.y).sort((p, q) => p - q);
-    gz.x = Math.max(0, Math.min(1, xs[xs.length >> 1])); gz.y = Math.max(0, Math.min(1, ys[ys.length >> 1]));
-    gz.raw = [mx, my];
+    gz.x = Math.max(0, Math.min(1, median(gz.hist.map(p => p.x)))); gz.y = Math.max(0, Math.min(1, median(gz.hist.map(p => p.y))));
     const px = gz.x * innerWidth, py = gz.y * innerHeight;
     const dot = $('gazedot');
     dot.hidden = !$('optDot').checked; dot.style.left = px + 'px'; dot.style.top = py + 'px';
-    if (!$('optGaze').checked || S.paused || S.scan || S.test || S.busy) { gz.votes = []; gz.near = null; stage.querySelectorAll('.target.near').forEach(e => e.classList.remove('near')); return; }
-    const list = targets(); if (!list.length) return;
+    if (!$('optGaze').checked || S.paused || S.scan || S.test || S.busy) { clearNear(); return; }
+    const list = targets(); if (!list.length) { clearNear(); return; }   // Ruhe: kein Feld, keine Reaktion auf Blick
+    // gestrichelt: Feld unter dem geglätteten Blickpunkt (bzw. das nächstgelegene)
     let best = null, bestD = Infinity;
     stage.querySelectorAll('.target').forEach(el => {
       const r = el.getBoundingClientRect();
@@ -693,87 +712,110 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     });
     gz.near = best;
     stage.querySelectorAll('.target').forEach(el => el.classList.toggle('near', el.dataset.k === best));
-    // Markieren, wenn ein Feld im Zeitfenster klar am häufigsten getroffen wurde
+    // fest: Feld, das im Zeitfenster «Markieren nach ms» mehrheitlich (≥ 60 %) getroffen wurde
     const dwell = num('dwellMs', 700);
     gz.votes.push({ t: now, k: best });
     while (gz.votes.length && now - gz.votes[0].t > dwell) gz.votes.shift();
-    if (gz.votes.length < 6 || now - gz.votes[0].t < dwell * 0.8) return;
+    if (gz.votes.length < 3 || now - gz.votes[0].t < dwell * 0.8) return;
     const cnt = {}; gz.votes.forEach(v => cnt[v.k] = (cnt[v.k] || 0) + 1);
     const [top, n] = Object.entries(cnt).sort((p, q) => q[1] - p[1])[0];
     const i = list.indexOf(top);
     if (n / gz.votes.length >= 0.6 && i >= 0 && S.focus !== i) { S.focus = i; paintFocus(); }
   }
-  async function showPoints(box, pts, label) {
-    const out = [], d = box.querySelector('#cdot'), prog = box.querySelector('.prog');
-    for (let j = 0; j < pts.length; j++) {
-      const [x, y] = pts[j];
-      d.classList.remove('ok'); d.style.left = (x * 100) + '%'; d.style.top = (y * 100) + '%';
-      prog.textContent = `${label} ${j + 1} von ${pts.length}`;
-      await new Promise(r => setTimeout(r, 700));
-      gz.sampling = []; const t0 = performance.now();
-      // sammeln, bis 40 gültige Bilder da sind (höchstens 3,5 s)
-      while (gz.sampling.length < 40 && performance.now() - t0 < 3500) await new Promise(r => setTimeout(r, 50));
-      const s = gz.sampling; gz.sampling = null;
-      d.classList.add('ok'); await new Promise(r => setTimeout(r, 200));
-      out.push({ x, y, s: robust(s) });
-    }
-    return out;
-  }
-  function robust(s) { // Ausreisser je Merkmal per Median und MAD entfernen
-    if (s.length < 5) return s;
-    const k = s[0].length, med = [], mad = [];
-    for (let i = 0; i < k; i++) {
-      const v = s.map(f => f[i]).sort((p, q) => p - q); med[i] = v[v.length >> 1];
-      const dv = s.map(f => Math.abs(f[i] - med[i])).sort((p, q) => p - q); mad[i] = dv[dv.length >> 1] || 1e-6;
-    }
-    const keep = s.filter(f => f.every((v, i) => Math.abs(v - med[i]) <= 3 * mad[i]));
-    return keep.length >= 5 ? keep : s;
-  }
+
   function calibBox(text) {
     const box = document.createElement('div'); box.className = 'calib';
     box.innerHTML = `<div class="dot" id="cdot"></div><p>${text}</p><div class="prog"></div>`;
     document.body.appendChild(box); return box;
   }
+  // Punkt zeigen, 800 ms einschwingen lassen, dann sammeln (nur bei offenen Augen)
+  async function atPoint(box, x, y, label, fn) {
+    const d = box.querySelector('#cdot');
+    d.classList.remove('ok'); d.style.left = (x * 100) + '%'; d.style.top = (y * 100) + '%';
+    box.querySelector('.prog').textContent = label;
+    await sleep(800);
+    const r = await fn(x, y);
+    d.classList.add('ok'); await sleep(250);
+    return r;
+  }
+  async function train(x, y) {
+    // alle 100 ms eine Probe, mindestens 8 und höchstens 4 s
+    let k = 0; const t0 = performance.now();
+    while ((k < 8 || performance.now() - t0 < 1200) && performance.now() - t0 < 4000 && k < 14) {
+      if (cam.gazeOk) { gz.wg.recordScreenPosition(x * innerWidth, y * innerHeight, 'click'); k++; }
+      await sleep(100);
+    }
+    return k;
+  }
+  async function collect(ms) {
+    gz.collect = []; const t0 = performance.now();
+    while ((performance.now() - t0 < ms || gz.collect.length < 5) && performance.now() - t0 < ms * 3) await sleep(50);
+    const c = gz.collect; gz.collect = null;
+    return c.length ? [median(c.map(p => p[0])), median(c.map(p => p[1]))] : null;
+  }
+
   async function calibrate() {
     if (!cam.on) { $('camNote').textContent = 'Zuerst die Kamera starten.'; return; }
-    if (gz.busy) return; gz.busy = true; if (areaEdit) setAreaEdit(false);
-    const head = $('calMode').value === 'head';
-    const box = calibBox(head ? 'Punkt anschauen und den Kopf dabei ruhig mitdrehen, so wie es sich natürlich anfühlt.' : 'Punkt anschauen, nur mit den Augen. Kopf ruhig halten. Der Punkt wird grün, wenn er erfasst ist.');
+    if (gz.busy) return;
+    if (areaEdit) setAreaEdit(false);
+    gz.busy = true;
+    try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); await sleep(400); } catch (e) { /* Vollbild optional */ }
+    if (!(await ensureGazer())) { gz.busy = false; return; }
+    gz.wg.resume();
+    const nPts = Number($('calN').value) === 9 ? 9 : 13;
+    const box = calibBox('Schauen Sie auf den Punkt, bis er grün wird. Kopf möglichst ruhig, normal blinzeln ist in Ordnung.');
     const A = area(), X = t => A.x0 + t * (A.x1 - A.x0), Y = t => A.y0 + t * (A.y1 - A.y0);
     const pts = []; [0, 0.5, 1].forEach(v => [0, 0.5, 1].forEach(u => pts.push([X(u), Y(v)])));
-    pts.push([X(0.25), Y(0.25)], [X(0.75), Y(0.25)], [X(0.25), Y(0.75)], [X(0.75), Y(0.75)]);
-    const cal = await showPoints(box, pts, 'Punkt');
-    if (cal.some(p => p.s.length < 5)) { box.remove(); gz.busy = false; $('camNote').textContent = 'Kalibrierung abgebrochen: Augen an einem Punkt nicht erkannt. Licht und Position prüfen und nochmals versuchen.'; log('Kalibrierung fehlgeschlagen', 'cam'); return; }
-    const samples = []; cal.forEach(p => p.s.forEach(f => samples.push({ f, x: p.x, y: p.y })));
-    gz.model = fit(samples); gz.dx = 0; gz.dy = 0; gz.hist = [];
-    box.querySelector('p').textContent = 'Kontrolle: noch drei Punkte.';
-    const val = await showPoints(box, [[X(0.3), Y(0.5)], [X(0.7), Y(0.5)], [X(0.5), Y(0.25)]], 'Kontrolle');
+    if (nPts === 13) pts.push([X(0.25), Y(0.25)], [X(0.75), Y(0.25)], [X(0.25), Y(0.75)], [X(0.75), Y(0.75)]);
+    resetModel();
+    gz.calibrated = false; gz.dx = 0; gz.dy = 0; gz.hist = []; clearNear();
+    let bad = 0; gz.abort = false;
+    for (let j = 0; j < pts.length; j++) {
+      const k = await atPoint(box, pts[j][0], pts[j][1], `Punkt ${j + 1} von ${pts.length}`, train);
+      if (k < 5) bad++;
+      if (gz.abort) { box.remove(); gz.busy = false; resetModel(); $('camNote').textContent = 'Kalibrierung abgebrochen (Esc). Blick per Kamera ist aus.'; $('optGaze').checked = false; log('Kalibrierung abgebrochen (Esc)', 'wiz'); status(); return; }
+    }
+    if (bad > 2) {
+      box.remove(); gz.busy = false;
+      $('camNote').textContent = `Kalibrierung abgebrochen: An ${bad} Punkten waren die Augen nicht sicher offen oder das Gesicht nicht im Bild. Licht und Position prüfen.`;
+      log(`Kalibrierung fehlgeschlagen (${bad} Punkte ohne genügend Proben)`, 'cam'); return;
+    }
+    // Kontrolle an 3 neuen Punkten, die nicht kalibriert wurden
+    box.querySelector('p').textContent = 'Kontrolle: noch drei Punkte anschauen.';
+    const vpts = [[X(0.35), Y(0.4)], [X(0.68), Y(0.62)], [X(0.5), Y(0.15)]];
+    const errs = [];
+    for (let j = 0; j < vpts.length; j++) {
+      const est = await atPoint(box, vpts[j][0], vpts[j][1], `Kontrolle ${j + 1} von 3`, () => collect(1200));
+      if (est) errs.push({ dx: Math.abs(est[0] - vpts[j][0]), dy: Math.abs(est[1] - vpts[j][1]) });
+    }
     box.remove(); gz.busy = false;
-    const errs = val.filter(p => p.s.length).map(p => {
-      const est = p.s.map(f => gz.model(f)).map(e => e.map((v, i) => v)); const ex = est.map(e => e[0]).sort((a, b) => a - b), ey = est.map(e => e[1]).sort((a, b) => a - b);
-      return Math.hypot(ex[ex.length >> 1] - p.x, ey[ey.length >> 1] - p.y);
-    });
-    const pct = errs.length ? Math.round(errs.reduce((a, b) => a + b, 0) / errs.length * 100) : NaN;
-    const verdict = !isFinite(pct) ? 'Kontrolle nicht möglich.' : pct <= 10 ? 'gut genug für die sechs Beschwerdefelder.' : pct <= 18 ? 'knapp, eher nur für die sechs grossen Felder.' : 'zu ungenau. Licht, Abstand und Kopfhaltung verbessern oder «Kopf und Augen» wählen.';
-    $('camNote').textContent = `Kalibriert (${head ? 'Kopf und Augen' : 'nur Augen'}). Mittlere Abweichung etwa ${pct} % der Bildschirmgrösse: ${verdict}`;
-    log(`Kalibriert, ${head ? 'Kopf und Augen' : 'nur Augen'}, 13 Punkte, Bereich oben ${Math.round(A.y0 * 100)} % unten ${Math.round((1 - A.y1) * 100)} % links ${Math.round(A.x0 * 100)} % rechts ${Math.round((1 - A.x1) * 100)} %, Kontrolle: mittlere Abweichung ${pct} %`, 'cam');
-    gz.x = 0.5; gz.y = 0.5;
-    if (isFinite(pct)) { $('optGaze').checked = true; $('optDot').checked = true; log('Blick per Kamera automatisch eingeschaltet', 'cam'); }
+    gz.vw = innerWidth; gz.vh = innerHeight; gz.calibrated = true; gz.hist = [];
+    const mean = f => errs.length ? errs.reduce((a, e) => a + f(e), 0) / errs.length * 100 : NaN;
+    const pct = Math.round(mean(e => Math.hypot(e.dx, e.dy))), ph = Math.round(mean(e => e.dx)), pv = Math.round(mean(e => e.dy));
+    const verdict = !isFinite(pct) ? 'Kontrolle nicht möglich.' : pct <= 10 ? 'gut genug für die sechs Beschwerdefelder.' : pct <= 18 ? 'knapp: eher nur für die sechs grossen Felder, für die Skala Pfeiltasten oder Abtastmodus.' : 'zu ungenau. Licht von vorn, Kopf ruhiger, Abstand 50–70 cm, dann neu kalibrieren.';
+    $('camNote').textContent = `Kalibriert (${pts.length} Punkte). Mittlere Abweichung ${pct} % der Bildschirmgrösse (horizontal ${ph} %, vertikal ${pv} %): ${verdict} Taste C justiert die Mitte nach.`;
+    log(`Blick kalibriert mit WebGazer, ${pts.length} Punkte, Fenster ${innerWidth}×${innerHeight}, Bereich oben ${Math.round(A.y0 * 100)} % unten ${Math.round((1 - A.y1) * 100)} % links ${Math.round(A.x0 * 100)} % rechts ${Math.round((1 - A.x1) * 100)} %. Kontrolle an 3 Punkten: mittlere Abweichung ${pct} % (horizontal ${ph} %, vertikal ${pv} %)`, 'cam');
+    if (isFinite(pct) && !$('optGaze').checked) { $('optGaze').checked = true; $('optDot').checked = true; log('Blick per Kamera eingeschaltet', 'cam'); }
     render();
   }
   async function recenter() {
-    if (!gz.model) { $('camNote').textContent = 'Zuerst kalibrieren.'; return; }
+    if (!gz.calibrated) { $('camNote').textContent = 'Zuerst den Blick kalibrieren.'; return; }
     if (gz.busy) return; gz.busy = true;
-    const box = calibBox('Mitte anschauen.');
-    const [p] = await showPoints(box, [[0.5, 0.5]], 'Mitte');
+    const box = calibBox('Bitte den Punkt in der Mitte anschauen.');
+    const est = await atPoint(box, 0.5, 0.5, 'Mitte', () => collect(1500));
     box.remove(); gz.busy = false;
-    if (p.s.length < 5) { $('camNote').textContent = 'Nachjustieren nicht möglich: Augen nicht erkannt.'; return; }
-    const est = p.s.map(f => gz.model(f));
-    const ex = est.map(e => e[0]).sort((a, b) => a - b)[est.length >> 1], ey = est.map(e => e[1]).sort((a, b) => a - b)[est.length >> 1];
-    gz.dx = 0.5 - ex; gz.dy = 0.5 - ey; gz.hist = [];
-    $('camNote').textContent = `Mitte nachjustiert (Verschiebung ${Math.round(Math.hypot(gz.dx, gz.dy) * 100)} %).`;
-    log(`Mitte nachjustiert, Verschiebung ${Math.round(Math.hypot(gz.dx, gz.dy) * 100)} %`, 'cam');
+    if (!est) { $('camNote').textContent = 'Nachjustieren nicht möglich: Augen nicht erkannt.'; log('Mitte nachjustieren fehlgeschlagen', 'cam'); return; }
+    gz.dx = 0.5 - est[0]; gz.dy = 0.5 - est[1]; gz.hist = [];
+    const v = Math.round(Math.hypot(gz.dx, gz.dy) * 100);
+    $('camNote').textContent = `Mitte nachjustiert (Verschiebung ${v} %).`;
+    log(`Mitte nachjustiert (C), Verschiebung ${v} % (x ${Math.round(gz.dx * 100)} %, y ${Math.round(gz.dy * 100)} %)`, 'cam');
   }
+  addEventListener('resize', () => {
+    if (gz.calibrated && (Math.abs(innerWidth - gz.vw) > 20 || Math.abs(innerHeight - gz.vh) > 20)) {
+      $('camNote').textContent = 'Fenstergrösse hat sich seit der Kalibrierung geändert. Zurück in den Vollbildmodus (F11) oder neu kalibrieren.';
+      if (!gz.sizeWarned) { gz.sizeWarned = true; log(`Fenstergrösse geändert (${innerWidth}×${innerHeight}), Kalibrierung gilt für ${gz.vw}×${gz.vh}`, 'cam'); }
+    } else gz.sizeWarned = false;
+  });
   function area() {
     const c = (id, d) => Math.max(0, Math.min(45, num(id, d))) / 100;
     return { x0: c('calLeft', 6), x1: 1 - c('calRight', 6), y0: c('calTop', 6), y1: 1 - c('calBottom', 6) };
@@ -840,8 +882,9 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   });
   $('btnCalib').addEventListener('click', calibrate);
   $('optGaze').addEventListener('change', e => {
-    if (e.target.checked && !gz.model) { e.target.checked = false; $('camNote').textContent = 'Zuerst kalibrieren.'; return; }
-    log(e.target.checked ? 'Blick per Kamera an (experimentell)' : 'Blick per Kamera aus, Wizard markiert', 'wiz');
+    if (e.target.checked && !gz.calibrated) { e.target.checked = false; $('camNote').textContent = 'Zuerst den Blick kalibrieren.'; return; }
+    if (!e.target.checked) { clearNear(); $('gazedot').hidden = true; }
+    log(e.target.checked ? 'Blick per Kamera an' : 'Blick per Kamera aus, Wizard markiert', 'wiz');
     status();
   });
 
@@ -892,7 +935,8 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (typing(e.target)) { if (e.key === 'Escape') e.target.blur(); return; }
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (k === 'Escape') { $('help').hidden = true; if (areaEdit) setAreaEdit(false); return; }
+    if (k === 'Escape') { $('help').hidden = true; if (areaEdit) setAreaEdit(false); if (gz.busy) gz.abort = true; return; }
+    if (gz.busy) { e.preventDefault(); return; }   // während Kalibrierung keine Wizard-Tasten
     if (k !== 'w' && !KEYMAP[k]) return;
     e.preventDefault();               // verhindert auch, dass Enter/Leertaste eine fokussierte Schaltfläche auslöst
     if (e.repeat) return;             // gedrückt gehaltene Taste löst nur einmal aus
