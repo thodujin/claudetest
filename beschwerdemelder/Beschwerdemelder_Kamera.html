@@ -61,7 +61,10 @@ h1.q { font-size: clamp(30px, 5vw, 52px); line-height: 1.1; margin: 0; }
 .target.picked { background: var(--go-tint); border-color: var(--go); box-shadow: 0 0 0 6px var(--go-tint); }
 .scale-ends { display: flex; justify-content: space-between; color: var(--muted); }
 .utility { display: flex; gap: 16px; flex-wrap: wrap; }
-.utility .target { flex: 1 1 160px; min-height: 76px; font-size: 22px; flex-direction: row; }
+.utility .target { flex: 1 1 160px; min-height: max(110px, 14vh); font-size: clamp(24px, 3vw, 36px); flex-direction: row; }
+/* Prüfen und Gesendet: die Auswahl füllt den freien Platz – grössere Ziele für den Blick */
+.utility.big { flex: 1 1 auto; min-height: 0; align-items: stretch; }
+.utility.big .target { min-height: max(160px, 24vh); max-height: 46vh; font-size: clamp(30px, 4.4vw, 56px); border-width: 3px; }
 .utility .target.cancel { color: var(--stop); }
 .utility .target.send { border-width: 3px; }
 .summary { background: var(--surface); border: 2px solid var(--line); border-radius: 16px; padding: 28px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
@@ -332,7 +335,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   const cname = id => (COMPLAINTS.find(c => c.id === id) || {}).label || id;
   const bandLabel = b => `${b.label} (${b.from}–${b.to})`;
   const tgtLabel = k => /^b_/.test(k) ? bandLabel(BANDS.find(b => 'b_' + b.id === k)) : /^l\d+$/.test(k) ? 'Stufe ' + k.slice(1) : ({ zurueck: 'Zurück', abbrechen: 'Abbrechen', senden: 'Senden', zuruecknehmen: 'Zurücknehmen' })[k] || cname(k);
-  const util = keys => '<div class="utility">' + keys.map(k => `<div class="target ${k === 'abbrechen' ? 'cancel' : k === 'senden' ? 'send' : ''}" data-k="${k}">${tgtLabel(k)}</div>`).join('') + '</div>';
+  const util = (keys, cls = '') => `<div class="utility ${cls}">` + keys.map(k => `<div class="target ${k === 'abbrechen' ? 'cancel' : k === 'senden' ? 'send' : ''}" data-k="${k}">${tgtLabel(k)}</div>`).join('') + '</div>';
 
   function render() {
     let h = '';
@@ -353,10 +356,10 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
         ${util(['zurueck', 'abbrechen'])}`;
     } else if (S.screen === 'pruefen') {
       h = `<div class="stage-head"><span class="step">Schritt 3 von 3</span>${how}</div><h1 class="q">Stimmt das?</h1>${scanB}
-        <div class="summary">${ICON[S.complaint]}<div><div class="what">${cname(S.complaint)}</div><div class="how">Stärke ${S.level} von 10 · <span class="bandtag" style="color:var(--b-${bandOf(S.level).id})">${bandOf(S.level).label}</span></div></div></div>${util(['senden', 'zurueck', 'abbrechen'])}`;
+        <div class="summary">${ICON[S.complaint]}<div><div class="what">${cname(S.complaint)}</div><div class="how">Stärke ${S.level} von 10 · <span class="bandtag" style="color:var(--b-${bandOf(S.level).id})">${bandOf(S.level).label}</span></div></div></div>${util(['senden', 'zurueck', 'abbrechen'], 'big')}`;
     } else if (S.screen === 'gesendet') {
       const m = S.lastMsg;
-      h = `<div class="rest ok"><div><p class="big">Gesendet: ${cname(m.complaint)}, ${m.level} von 10</p><p class="sub">Die Pflege ist informiert. Bitte warten.</p></div></div>${targets().length ? util(['zuruecknehmen']) : ''}`;
+      h = `<div class="rest ok"><div><p class="big">Gesendet: ${cname(m.complaint)}, ${m.level} von 10</p><p class="sub">Die Pflege ist informiert. Bitte warten.</p></div></div>${targets().length ? util(['zuruecknehmen'], 'big') : ''}`;
     } else if (S.screen === 'kommt') {
       h = `<div class="rest ok"><div><p class="big">Die Pflege kommt.</p><p class="sub">${cname(S.lastMsg.complaint)}, ${S.lastMsg.level} von 10</p></div></div>`;
     } else if (S.screen === 'zurueckgenommen') {

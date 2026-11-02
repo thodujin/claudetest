@@ -1,6 +1,6 @@
 # Beschwerdemelder – Learnings für den Meilenstein-2-Report
 
-Testprototyp für Gesunde, kein Medizinprodukt. Stand: 2. November 2026.
+Testprototyp für Gesunde, kein Medizinprodukt. Stand: 2. November 2026 (zwei Selbsttests).
 
 ## Kontext des ersten Tests
 
@@ -49,6 +49,19 @@ Weitere Punkte:
 - **Verschiebung korrigiert:** Liegen alle Schätzungen in dieselbe Richtung daneben, wird diese Verschiebung automatisch ausgeglichen, wie bei Taste C.
 - **Urteil nach der Anordnung:** Die Einschätzung, ob die Genauigkeit reicht, richtet sich vor allem nach der horizontalen Abweichung, weil alle Auswahlen nebeneinander liegen.
 - **Protokoll:** Jede Kalibrierung wird mit Gesamt-, horizontaler und vertikaler Abweichung, Verschiebung und Fenstergrösse protokolliert, als Kennwerte für den Report.
+
+## Zweiter Selbsttest (nach M1 und M2)
+
+| # | Befund | Folgerung für das Design |
+|---|---|---|
+| B5 | **Die Kalibrierung ist deutlich besser.** Dazu beigetragen hat auch eine bessere Sitzposition: Abstand 50–70 cm, Kopf ruhig, Licht von vorn. | Die überarbeitete Kalibrierung (M2) beibehalten. Vor jedem Test Abstand, Licht und Kopfhaltung vorgeben und in der Anleitung festhalten. |
+| B6 | **Die Auswahl über drei Felder nebeneinander klappt deutlich besser** als über die Skala mit 11 Feldern. | Bestätigt B2 bis B4. Bei allen Auswahlen das Muster «wenige grosse Felder nebeneinander» verwenden. |
+| B7 | **Grössere Felder würden die Auswahl weiter erleichtern**, besonders Senden, Zurück und Abbrechen. Auf «Stimmt das?» blieb viel Fläche ungenutzt. | Siehe M3. |
+
+### M3 – Grössere Auswahlfelder (aus B7)
+
+- **Zurück und Abbrechen auf allen Seiten:** mindestens 110 px bzw. 14 % der Fensterhöhe statt 76 px, grössere Schrift.
+- **«Stimmt das?» und «Gesendet»:** Senden, Zurück, Abbrechen und Zurücknehmen füllen den freien Platz, mindestens 24 % der Fensterhöhe.
 
 ## Kennwerte für den nächsten Test (bitte eintragen)
 
