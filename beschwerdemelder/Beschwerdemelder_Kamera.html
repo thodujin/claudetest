@@ -11,13 +11,16 @@
   --bg: #e9eff2; --surface: #ffffff; --surface-2: #f4f7f8; --ink: #12202a; --muted: #566873; --line: #c6d1d7;
   --focus: #d98a00; --focus-tint: rgba(217,138,0,.16); --go: #1c7a58; --go-tint: rgba(28,122,88,.14);
   --stop: #b03f2b; --stop-tint: rgba(176,63,43,.12); --console: #dfe6ea;
+  /* Stärke-Bereiche: Farbe immer zusammen mit Wort und Zahlen (nicht nur Farbe) */
+  --b-leicht: #2e8b57; --b-leicht-tint: #dcf1e4; --b-mittel: #c77700; --b-mittel-tint: #fdebc8; --b-stark: #c0392b; --b-stark-tint: #f9dcd8;
   --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg:#0c1317; --surface:#152027; --surface-2:#1a262e; --ink:#e4ecef; --muted:#92a3ad; --line:#2b3943;
     --focus:#f0b13a; --focus-tint:rgba(240,177,58,.18); --go:#45b98d; --go-tint:rgba(69,185,141,.16);
-    --stop:#e27a64; --stop-tint:rgba(226,122,100,.14); --console:#10191e; color-scheme: dark; }
+    --stop:#e27a64; --stop-tint:rgba(226,122,100,.14); --console:#10191e; color-scheme: dark;
+    --b-leicht:#5cc58a; --b-leicht-tint:#173527; --b-mittel:#f0a63a; --b-mittel-tint:#3a2c12; --b-stark:#ef7564; --b-stark-tint:#3d1c18; }
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
@@ -35,14 +38,27 @@ h1.q { font-size: clamp(30px, 5vw, 52px); line-height: 1.1; margin: 0; }
 .scanbanner { font-size: 16px; padding: 8px 14px; border-radius: 8px; background: var(--focus-tint); border: 1px solid var(--focus); align-self: flex-start; }
 .grid { display: grid; gap: 16px; flex: 1; min-height: 0; }
 .grid.six { grid-template-columns: repeat(3, minmax(0,1fr)); }
-.grid.scale { grid-template-columns: repeat(11, minmax(0,1fr)); align-content: center; }
-@media (max-width: 640px) { .grid.six { grid-template-columns: repeat(2, minmax(0,1fr)); } .grid.scale { grid-template-columns: repeat(6, minmax(0,1fr)); } }
+.grid.bands { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.grid.nums { grid-auto-flow: column; grid-auto-columns: minmax(0,1fr); }
+@media (max-width: 640px) { .grid.six { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+.target.band { border-width: 3px; gap: 6px; }
+.target.band .bname { font-size: clamp(30px, 4.6vw, 56px); }
+.target.band .brange { font-size: clamp(22px, 3vw, 34px); font-weight: 400; font-variant-numeric: tabular-nums; }
+.target.band-leicht { background: var(--b-leicht-tint); border-color: var(--b-leicht); }
+.target.band-mittel { background: var(--b-mittel-tint); border-color: var(--b-mittel); }
+.target.band-stark  { background: var(--b-stark-tint);  border-color: var(--b-stark); }
+.target.band-leicht .bname { color: var(--b-leicht); } .target.band-mittel .bname { color: var(--b-mittel); } .target.band-stark .bname { color: var(--b-stark); }
+.grid.nums .target { font-size: clamp(44px, 7vw, 96px); font-variant-numeric: tabular-nums; border-width: 3px; }
+/* Auf farbigen Feldern wäre der orange Fokus (v. a. bei «Mittel») nicht sichtbar: dunkler Rahmen aussen */
+.target.band.near, .grid.nums .target.near { border-style: solid; outline: 5px dashed var(--ink); outline-offset: 5px; }
+.target.band.gaze, .grid.nums .target.gaze { box-shadow: none; outline: 7px solid var(--ink); outline-offset: 5px; }
+.target.band.picked, .grid.nums .target.picked { outline: 7px solid var(--go); outline-offset: 5px; }
+.bandtag { display: inline-block; padding: 2px 12px; border-radius: 999px; border: 2px solid currentColor; font-weight: 700; }
 .target { position: relative; background: var(--surface); border: 2px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px 8px; font-size: clamp(20px, 2.6vw, 30px); font-weight: 700; text-align: center; min-height: 120px; transition: border-color .15s, box-shadow .15s, background .15s; }
 .target svg { width: clamp(44px, 6vw, 72px); height: auto; }
 .target.near { border-color: var(--focus); border-style: dashed; }
 .target.gaze { border-color: var(--focus); border-style: solid; box-shadow: 0 0 0 6px var(--focus-tint); }
 .target.picked { background: var(--go-tint); border-color: var(--go); box-shadow: 0 0 0 6px var(--go-tint); }
-.grid.scale .target { min-height: 150px; font-size: clamp(24px, 3.4vw, 40px); font-variant-numeric: tabular-nums; }
 .scale-ends { display: flex; justify-content: space-between; color: var(--muted); }
 .utility { display: flex; gap: 16px; flex-wrap: wrap; }
 .utility .target { flex: 1 1 160px; min-height: 76px; font-size: 22px; flex-direction: row; }
@@ -64,7 +80,14 @@ h1.q { font-size: clamp(30px, 5vw, 52px); line-height: 1.1; margin: 0; }
 .pause .box strong { display: block; font-size: clamp(26px, 4vw, 40px); margin-bottom: 10px; }
 .pause .box span { font-size: 20px; color: var(--muted); }
 .calib { background: var(--bg); cursor: none; }
-.calib .dot { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: var(--focus); box-shadow: 0 0 0 10px var(--focus-tint); }
+.calib .dot { position: absolute; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; border: 4px solid var(--focus); background: var(--focus-tint); display: grid; place-items: center; }
+.calib .dot i { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }  /* kleiner Kern: genauer fixieren */
+.calib.result { cursor: auto; }
+.calib .vt { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; border: 3px solid var(--go); }
+.calib .ve { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--stop); }
+.calib svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.calib .res { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; max-width: min(720px, 92vw); display: grid; gap: 10px; font-size: 17px; }
+.calib .res .row { justify-content: flex-end; }
 .calib p { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font-size: 22px; color: var(--muted); padding: 0 16px; }
 .calib .prog { position: absolute; inset: auto 0 12% 0; text-align: center; font-family: var(--font-mono); color: var(--muted); }
 .calarea { position: fixed; z-index: 41; border: 3px dashed var(--focus); background: var(--focus-tint); pointer-events: none; }
@@ -75,7 +98,7 @@ h1.q { font-size: clamp(30px, 5vw, 52px); line-height: 1.1; margin: 0; }
 .calarea.edit .done { display: block; }
 .calarea .tip { position: absolute; left: 0; right: 0; top: calc(50% + 32px); text-align: center; color: var(--muted); display: none; }
 .calarea.edit .tip { display: block; }
-.calib .dot.ok { background: var(--go); box-shadow: 0 0 0 10px var(--go-tint); }
+.calib .dot.ok { border-color: var(--go); background: var(--go-tint); }
 .testbox { background: var(--bg); display: grid; place-items: center; text-align: center; }
 .testbox .big { font-size: clamp(28px, 4vw, 44px); font-weight: 700; }
 .testbox .sub { font-size: 20px; color: var(--muted); margin-top: 12px; font-variant-numeric: tabular-nums; }
@@ -270,9 +293,13 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     { id: 'durst', label: 'Durst' }, { id: 'hunger', label: 'Hunger' }, { id: 'lage', label: 'Unbequeme Lage' }
   ];
   const ACTIVE = ['beschwerde', 'staerke', 'pruefen', 'gesendet'];
+  // Stärke in zwei Stufen: erst Bereich (3 Felder nebeneinander), dann nur die Zahlen dieses Bereichs
+  const BANDS = [{ id: 'leicht', label: 'Leicht', from: 0, to: 4 }, { id: 'mittel', label: 'Mittel', from: 5, to: 7 }, { id: 'stark', label: 'Stark', from: 8, to: 10 }];
+  const bandOf = lvl => BANDS.find(b => lvl >= b.from && lvl <= b.to);
+  const bandNums = b => Array.from({ length: b.to - b.from + 1 }, (_, i) => b.from + i);
   const SCAN = ['beschwerde', 'staerke', 'pruefen', 'gesendet'];
   const newCnt = () => ({ long: 0, short: 0, tooLong: 0, gone: 0, wiz: 0, maus: 0, sim: 0 });
-  const S = { screen: 'ruhe', focus: null, complaint: null, level: null, scan: false, paused: false, pausedBy: null, pauseCount: 0, run: 1, runStart: Date.now(), busy: false, lastMsg: null, test: null, cnt: newCnt() };
+  const S = { screen: 'ruhe', focus: null, complaint: null, level: null, band: null, scan: false, paused: false, pausedBy: null, pauseCount: 0, run: 1, runStart: Date.now(), busy: false, lastMsg: null, test: null, cnt: newCnt() };
   const messages = [], logLines = [];
   const $ = id => document.getElementById(id);
   const stage = $('stage');
@@ -295,14 +322,16 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
 
   function targets() {
     if (S.screen === 'beschwerde') return [...COMPLAINTS.map(c => c.id), 'zurueck', 'abbrechen'];
-    if (S.screen === 'staerke') return [...Array.from({ length: 11 }, (_, i) => 'l' + i), 'zurueck', 'abbrechen'];
+    if (S.screen === 'staerke') return S.band ? [...bandNums(S.band).map(n => 'l' + n), 'zurueck', 'abbrechen'] : [...BANDS.map(b => 'b_' + b.id), 'zurueck', 'abbrechen'];
     if (S.screen === 'pruefen') return ['senden', 'zurueck', 'abbrechen'];
     if (S.screen === 'gesendet') return S.lastMsg && !S.lastMsg.ack && !S.lastMsg.withdrawn ? ['zuruecknehmen'] : [];
     return [];
   }
-  const cols = () => S.screen === 'beschwerde' ? (innerWidth <= 640 ? 2 : 3) : S.screen === 'staerke' ? (innerWidth <= 640 ? 6 : 11) : 1;
+  const optCount = () => S.screen === 'beschwerde' ? 6 : S.screen === 'staerke' ? (S.band ? bandNums(S.band).length : 3) : 0;
+  const cols = () => S.screen === 'beschwerde' ? (innerWidth <= 640 ? 2 : 3) : S.screen === 'staerke' ? optCount() : 1;
   const cname = id => (COMPLAINTS.find(c => c.id === id) || {}).label || id;
-  const tgtLabel = k => /^l\d+$/.test(k) ? 'Stufe ' + k.slice(1) : ({ zurueck: 'Zurück', abbrechen: 'Abbrechen', senden: 'Senden', zuruecknehmen: 'Zurücknehmen' })[k] || cname(k);
+  const bandLabel = b => `${b.label} (${b.from}–${b.to})`;
+  const tgtLabel = k => /^b_/.test(k) ? bandLabel(BANDS.find(b => 'b_' + b.id === k)) : /^l\d+$/.test(k) ? 'Stufe ' + k.slice(1) : ({ zurueck: 'Zurück', abbrechen: 'Abbrechen', senden: 'Senden', zuruecknehmen: 'Zurücknehmen' })[k] || cname(k);
   const util = keys => '<div class="utility">' + keys.map(k => `<div class="target ${k === 'abbrechen' ? 'cancel' : k === 'senden' ? 'send' : ''}" data-k="${k}">${tgtLabel(k)}</div>`).join('') + '</div>';
 
   function render() {
@@ -316,12 +345,15 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       h = `<div class="stage-head"><span class="step">Schritt 1 von 3</span>${how}</div><h1 class="q">Was haben Sie?</h1>${scanB}
         <div class="grid six">${COMPLAINTS.map(c => `<div class="target" data-k="${c.id}">${ICON[c.id]}<span>${c.label}</span></div>`).join('')}</div>${util(['zurueck', 'abbrechen'])}`;
     } else if (S.screen === 'staerke') {
-      h = `<div class="stage-head"><span class="step">Schritt 2 von 3 · ${cname(S.complaint)}</span>${how}</div><h1 class="q">Wie stark?</h1>${scanB}
-        <div class="grid scale">${Array.from({ length: 11 }, (_, i) => `<div class="target" data-k="l${i}">${i}</div>`).join('')}</div>
-        <div class="scale-ends"><span>0 = gar nicht</span><span>10 = am stärksten</span></div>${util(['zurueck', 'abbrechen'])}`;
+      h = `<div class="stage-head"><span class="step">Schritt 2 von 3 · ${cname(S.complaint)}</span>${how}</div><h1 class="q">${S.band ? 'Welche Zahl?' : 'Wie stark?'}</h1>${scanB}
+        ${S.band
+          ? `<div class="grid nums">${bandNums(S.band).map(n => `<div class="target band-${S.band.id}" data-k="l${n}">${n}</div>`).join('')}</div>
+             <div class="scale-ends"><span>${S.band.label}: ${S.band.from} bis ${S.band.to}</span><span>0 = gar nicht · 10 = am stärksten</span></div>`
+          : `<div class="grid bands">${BANDS.map(b => `<div class="target band band-${b.id}" data-k="b_${b.id}"><span class="bname">${b.label}</span><span class="brange">${b.from} bis ${b.to}</span></div>`).join('')}</div>`}
+        ${util(['zurueck', 'abbrechen'])}`;
     } else if (S.screen === 'pruefen') {
       h = `<div class="stage-head"><span class="step">Schritt 3 von 3</span>${how}</div><h1 class="q">Stimmt das?</h1>${scanB}
-        <div class="summary">${ICON[S.complaint]}<div><div class="what">${cname(S.complaint)}</div><div class="how">Stärke ${S.level} von 10</div></div></div>${util(['senden', 'zurueck', 'abbrechen'])}`;
+        <div class="summary">${ICON[S.complaint]}<div><div class="what">${cname(S.complaint)}</div><div class="how">Stärke ${S.level} von 10 · <span class="bandtag" style="color:var(--b-${bandOf(S.level).id})">${bandOf(S.level).label}</span></div></div></div>${util(['senden', 'zurueck', 'abbrechen'])}`;
     } else if (S.screen === 'gesendet') {
       const m = S.lastMsg;
       h = `<div class="rest ok"><div><p class="big">Gesendet: ${cname(m.complaint)}, ${m.level} von 10</p><p class="sub">Die Pflege ist informiert. Bitte warten.</p></div></div>${targets().length ? util(['zuruecknehmen']) : ''}`;
@@ -344,7 +376,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   }
 
   function status() {
-    const names = { ruhe: 'Ruhe', beschwerde: 'Beschwerde', staerke: 'Stärke', pruefen: 'Prüfen', gesendet: 'Gesendet', kommt: 'Pflege kommt', zurueckgenommen: 'Zurückgenommen', abgebrochen: 'Abgebrochen' };
+    const names = { ruhe: 'Ruhe', beschwerde: 'Beschwerde', staerke: S.band ? 'Stärke · ' + S.band.label : 'Stärke · Bereich', pruefen: 'Prüfen', gesendet: 'Gesendet', kommt: 'Pflege kommt', zurueckgenommen: 'Zurückgenommen', abgebrochen: 'Abgebrochen' };
     $('chipScreen').textContent = (S.paused ? 'Pause · ' : '') + names[S.screen];
     $('chipScreen').className = 'chip' + (S.paused ? ' warn' : '');
     $('chipScan').textContent = S.scan ? 'Abtasten an' : 'Abtasten aus';
@@ -406,15 +438,19 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     log('Gewählt: ' + tgtLabel(k), src);
     flashThen(k, () => {
       if (k === 'abbrechen') { log('Abgebrochen, nichts gesendet'); settle('abgebrochen', 2500); return; }
-      if (S.screen === 'beschwerde') { if (k === 'zurueck') { log('Zurück zu Ruhe'); return go('ruhe'); } S.complaint = k; return go('staerke'); }
+      if (S.screen === 'beschwerde') { if (k === 'zurueck') { log('Zurück zu Ruhe'); return go('ruhe'); } S.complaint = k; S.band = null; return go('staerke'); }
       if (S.screen === 'staerke') {
-        if (k === 'zurueck') return go('beschwerde', COMPLAINTS.findIndex(c => c.id === S.complaint));
+        if (k === 'zurueck') {
+          if (S.band) { const i = BANDS.indexOf(S.band); S.band = null; return go('staerke', i); }   // Zahl → Bereich
+          return go('beschwerde', COMPLAINTS.findIndex(c => c.id === S.complaint));
+        }
+        if (k.startsWith('b_')) { S.band = BANDS.find(b => 'b_' + b.id === k); return go('staerke'); }
         S.level = Number(k.slice(1)); return go('pruefen', 0);
       }
       if (S.screen === 'pruefen') {
-        if (k === 'zurueck') return go('staerke', S.level);
+        if (k === 'zurueck') { S.band = bandOf(S.level); return go('staerke', S.level - S.band.from); }
         const m = { id: messages.length + 1, complaint: S.complaint, level: S.level, time: clock(), room: $('room').value.trim(), bed: $('bed').value.trim(), ack: false, withdrawn: false };
-        messages.push(m); S.lastMsg = m; log(`Gesendet: ${cname(m.complaint)} ${m.level}/10`);
+        messages.push(m); S.lastMsg = m; log(`Gesendet: ${cname(m.complaint)} ${m.level}/10 (${bandOf(m.level).label})`);
         return go('gesendet');
       }
       if (S.screen === 'gesendet' && k === 'zuruecknehmen') { S.lastMsg.withdrawn = true; log('Meldung zurückgenommen, Pflegeansicht aktualisiert'); settle('zurueckgenommen', 3000); }
@@ -426,7 +462,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     const n = targets().length; if (!n) return;
     if (S.focus === null) S.focus = 0;
     else {
-      const c = cols(), opts = S.screen === 'beschwerde' ? 6 : S.screen === 'staerke' ? 11 : 0;
+      const c = cols(), opts = optCount();
       let f = S.focus;
       if (dir === 'left') f -= 1;
       if (dir === 'right') f += 1;
@@ -481,7 +517,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   function reset() {
     clearTimeout(backTimer); if (S.scan) toggleScan();
     log(runSummary());
-    S.run++; S.runStart = Date.now(); S.pauseCount = 0; S.paused = false; S.pausedBy = null; S.complaint = null; S.level = null; S.cnt = newCnt();
+    S.run++; S.runStart = Date.now(); S.pauseCount = 0; S.paused = false; S.pausedBy = null; S.complaint = null; S.level = null; S.band = null; S.cnt = newCnt();
     log('Neuer Durchgang', 'wiz'); go('ruhe');
   }
   function renderNurse() {
@@ -489,7 +525,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     if (!messages.length) { box.innerHTML = '<p class="small">Noch keine Meldungen.</p>'; return; }
     box.innerHTML = [...messages].reverse().map(m => `<div class="msg ${m.withdrawn ? 'withdrawn' : (!m.ack ? 'open' : '')}">
       <div class="top"><span>Zimmer ${m.room || '?'} · Bett ${m.bed || '?'}</span><span>${m.time}</span></div>
-      <div class="main">${cname(m.complaint)} · ${m.level}/10</div>
+      <div class="main">${cname(m.complaint)} · ${m.level}/10 <span class="bandtag" style="font-size:15px;color:var(--b-${bandOf(m.level).id})">${bandOf(m.level).label}</span></div>
       <div class="note">${m.withdrawn ? 'Von der Patientin zurückgenommen' : 'Selbstangabe, am Bett mit Ja/Nein bestätigen'}</div>
       ${!m.ack && !m.withdrawn ? `<button type="button" data-ack="${m.id}">Quittieren: ich komme</button>` : (m.ack ? '<span class="small">Quittiert</span>' : '')}</div>`).join('');
   }
@@ -725,25 +761,25 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
 
   function calibBox(text) {
     const box = document.createElement('div'); box.className = 'calib';
-    box.innerHTML = `<div class="dot" id="cdot"></div><p>${text}</p><div class="prog"></div>`;
+    box.innerHTML = `<div class="dot" id="cdot"><i></i></div><p>${text}</p><div class="prog"></div>`;
     document.body.appendChild(box); return box;
   }
-  // Punkt zeigen, 800 ms einschwingen lassen, dann sammeln (nur bei offenen Augen)
+  // Punkt zeigen, einschwingen lassen (Blicksprung + Korrektursakkade), dann sammeln – nur bei offenen Augen
   async function atPoint(box, x, y, label, fn) {
     const d = box.querySelector('#cdot');
     d.classList.remove('ok'); d.style.left = (x * 100) + '%'; d.style.top = (y * 100) + '%';
     box.querySelector('.prog').textContent = label;
-    await sleep(800);
+    await sleep(900);
     const r = await fn(x, y);
     d.classList.add('ok'); await sleep(250);
     return r;
   }
   async function train(x, y) {
-    // alle 100 ms eine Probe, mindestens 8 und höchstens 4 s
+    // alle 80 ms eine Probe: mindestens 12 Proben und 1,5 s, höchstens 22 Proben oder 4,5 s
     let k = 0; const t0 = performance.now();
-    while ((k < 8 || performance.now() - t0 < 1200) && performance.now() - t0 < 4000 && k < 14) {
+    while ((k < 12 || performance.now() - t0 < 1500) && performance.now() - t0 < 4500 && k < 22) {
       if (cam.gazeOk) { gz.wg.recordScreenPosition(x * innerWidth, y * innerHeight, 'click'); k++; }
-      await sleep(100);
+      await sleep(80);
     }
     return k;
   }
@@ -752,6 +788,23 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     while ((performance.now() - t0 < ms || gz.collect.length < 5) && performance.now() - t0 < ms * 3) await sleep(50);
     const c = gz.collect; gz.collect = null;
     return c.length ? [median(c.map(p => p[0])), median(c.map(p => p[1]))] : null;
+  }
+  // Ergebnis sichtbar machen: grüner Ring = Zielpunkt, roter Punkt = geschätzter Blick. Testleitung entscheidet.
+  function showResult(box, vpts, ests, text) {
+    box.classList.add('result');
+    box.querySelector('#cdot').remove(); box.querySelector('p').remove(); box.querySelector('.prog').remove();
+    let h = '<svg class="lines" aria-hidden="true">';
+    vpts.forEach((t, j) => { const e = ests[j]; if (e) h += `<line x1="${t[0] * 100}%" y1="${t[1] * 100}%" x2="${e[0] * 100}%" y2="${e[1] * 100}%" stroke="currentColor" stroke-width="2" stroke-dasharray="6 5" />`; });
+    h += '</svg>';
+    vpts.forEach((t, j) => { h += `<div class="vt" style="left:${t[0] * 100}%;top:${t[1] * 100}%"></div>`; const e = ests[j]; if (e) h += `<div class="ve" style="left:${e[0] * 100}%;top:${e[1] * 100}%"></div>`; });
+    h += `<div class="res"><div>${text}</div><div class="small">Grüner Ring: Kontrollpunkt · roter Punkt: geschätzter Blick (vor Korrektur der Verschiebung)</div>
+      <div class="row"><button type="button" id="calRedo">Neu kalibrieren</button><button type="button" class="primary" id="calOk">Übernehmen</button></div></div>`;
+    box.insertAdjacentHTML('beforeend', h);
+    return new Promise(res => {
+      box.querySelector('#calOk').addEventListener('click', () => res('ok'));
+      box.querySelector('#calRedo').addEventListener('click', () => res('redo'));
+      gz.onEsc = () => res('ok');
+    });
   }
 
   async function calibrate() {
@@ -763,40 +816,65 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     if (!(await ensureGazer())) { gz.busy = false; return; }
     gz.wg.resume();
     const nPts = Number($('calN').value) === 9 ? 9 : 13;
-    const box = calibBox('Schauen Sie auf den Punkt, bis er grün wird. Kopf möglichst ruhig, normal blinzeln ist in Ordnung.');
     const A = area(), X = t => A.x0 + t * (A.x1 - A.x0), Y = t => A.y0 + t * (A.y1 - A.y0);
     const pts = []; [0, 0.5, 1].forEach(v => [0, 0.5, 1].forEach(u => pts.push([X(u), Y(v)])));
     if (nPts === 13) pts.push([X(0.25), Y(0.25)], [X(0.75), Y(0.25)], [X(0.25), Y(0.75)], [X(0.75), Y(0.75)]);
-    resetModel();
-    gz.calibrated = false; gz.dx = 0; gz.dy = 0; gz.hist = []; clearNear();
-    let bad = 0; gz.abort = false;
-    for (let j = 0; j < pts.length; j++) {
-      const k = await atPoint(box, pts[j][0], pts[j][1], `Punkt ${j + 1} von ${pts.length}`, train);
-      if (k < 5) bad++;
-      if (gz.abort) { box.remove(); gz.busy = false; resetModel(); $('camNote').textContent = 'Kalibrierung abgebrochen (Esc). Blick per Kamera ist aus.'; $('optGaze').checked = false; log('Kalibrierung abgebrochen (Esc)', 'wiz'); status(); return; }
+    const cancel = box => { box.remove(); gz.busy = false; resetModel(); gz.calibrated = false; $('camNote').textContent = 'Kalibrierung abgebrochen (Esc). Blick per Kamera ist aus.'; $('optGaze').checked = false; log('Kalibrierung abgebrochen (Esc)', 'wiz'); status(); };
+
+    for (let attempt = 1; ; attempt++) {
+      const box = calibBox('Schauen Sie auf den schwarzen Punkt in der Mitte, bis der Ring grün wird. Nur die Augen bewegen, Kopf ruhig. Normal blinzeln ist in Ordnung.');
+      resetModel();
+      gz.calibrated = false; gz.dx = 0; gz.dy = 0; gz.hist = []; clearNear(); gz.abort = false;
+      // 1. Durchgang über alle Punkte, 2. Punkte mit zu wenig Proben einmal wiederholen
+      const weak = [];
+      for (let j = 0; j < pts.length; j++) {
+        const k = await atPoint(box, pts[j][0], pts[j][1], `Punkt ${j + 1} von ${pts.length}`, train);
+        if (k < 8) weak.push(j);
+        if (gz.abort) return cancel(box);
+      }
+      let bad = 0;
+      for (const j of weak) {
+        const k = await atPoint(box, pts[j][0], pts[j][1], `Wiederholung: Punkt ${j + 1}`, train);
+        if (k < 8) bad++;
+        if (gz.abort) return cancel(box);
+      }
+      if (bad > 2) {
+        box.remove(); gz.busy = false;
+        $('camNote').textContent = `Kalibrierung abgebrochen: An ${bad} Punkten waren die Augen nicht sicher offen oder das Gesicht nicht im Bild. Licht und Position prüfen.`;
+        log(`Kalibrierung fehlgeschlagen (${bad} Punkte ohne genügend Proben, ${weak.length} wiederholt)`, 'cam'); return;
+      }
+      // Kontrolle an 3 neuen Punkten auf verschiedenen Höhen, die nicht kalibriert wurden
+      box.querySelector('p').textContent = 'Kontrolle: noch drei Punkte anschauen.';
+      const vpts = [[X(0.35), Y(0.4)], [X(0.68), Y(0.62)], [X(0.5), Y(0.15)]];
+      const ests = [];
+      for (let j = 0; j < vpts.length; j++) {
+        ests.push(await atPoint(box, vpts[j][0], vpts[j][1], `Kontrolle ${j + 1} von 3`, () => collect(1500)));
+        if (gz.abort) return cancel(box);
+      }
+      const errs = vpts.map((t, j) => ests[j] && { sx: ests[j][0] - t[0], sy: ests[j][1] - t[1] }).filter(Boolean);
+      const mean = f => errs.length ? errs.reduce((a, e) => a + f(e), 0) / errs.length : NaN;
+      const pct = Math.round(mean(e => Math.hypot(e.sx, e.sy)) * 100), ph = Math.round(mean(e => Math.abs(e.sx)) * 100), pv = Math.round(mean(e => Math.abs(e.sy)) * 100);
+      // systematische Verschiebung (alle Schätzungen in dieselbe Richtung) wird als Offset korrigiert, wie Taste C
+      const bx = mean(e => e.sx), by = mean(e => e.sy);
+      const rest = Math.round(mean(e => Math.hypot(e.sx - bx, e.sy - by)) * 100);
+      // Urteil vor allem nach der horizontalen Abweichung: alle Auswahlen liegen nebeneinander (3 bis 5 Felder)
+      const verdict = !isFinite(pct) ? 'Kontrolle nicht möglich.'
+        : ph <= 8 && pv <= 12 ? 'gut: drei Felder nebeneinander und die Zahlen sollten gehen.'
+        : ph <= 13 && pv <= 18 ? 'brauchbar für drei Felder nebeneinander, bei den Zahlen knapp.'
+        : 'zu ungenau. Licht von vorn, Kopf ruhiger (anlehnen), Abstand 50–70 cm, dann neu kalibrieren.';
+      const text = `<b>Mittlere Abweichung ${pct} %</b> der Bildschirmgrösse (horizontal ${ph} %, vertikal ${pv} %). Nach Korrektur der Verschiebung etwa ${rest} %.<br>${verdict}${weak.length ? ` ${weak.length} Punkt(e) wurden wiederholt.` : ''}`;
+      log(`Blick kalibriert (Versuch ${attempt}), WebGazer, ${pts.length} Punkte (${weak.length} wiederholt), Fenster ${innerWidth}×${innerHeight}, Bereich oben ${Math.round(A.y0 * 100)} % unten ${Math.round((1 - A.y1) * 100)} % links ${Math.round(A.x0 * 100)} % rechts ${Math.round((1 - A.x1) * 100)} %. Kontrolle: mittlere Abweichung ${pct} % (horizontal ${ph} %, vertikal ${pv} %), Verschiebung x ${Math.round(bx * 100)} % y ${Math.round(by * 100)} %, nach Korrektur ${rest} %`, 'cam');
+      const choice = await showResult(box, vpts, ests, text);
+      gz.onEsc = null; box.remove();
+      if (choice === 'redo') { log('Neu kalibrieren gewählt', 'wiz'); continue; }
+      gz.busy = false;
+      gz.vw = innerWidth; gz.vh = innerHeight; gz.calibrated = true; gz.hist = [];
+      if (errs.length) { gz.dx = -bx; gz.dy = -by; }
+      $('camNote').textContent = `Kalibriert (${pts.length} Punkte). Abweichung ${pct} % (horizontal ${ph} %, vertikal ${pv} %), nach Korrektur der Verschiebung etwa ${rest} %. Taste C justiert die Mitte nach.`;
+      if (isFinite(pct) && !$('optGaze').checked) { $('optGaze').checked = true; $('optDot').checked = true; log('Blick per Kamera eingeschaltet', 'cam'); }
+      render();
+      return;
     }
-    if (bad > 2) {
-      box.remove(); gz.busy = false;
-      $('camNote').textContent = `Kalibrierung abgebrochen: An ${bad} Punkten waren die Augen nicht sicher offen oder das Gesicht nicht im Bild. Licht und Position prüfen.`;
-      log(`Kalibrierung fehlgeschlagen (${bad} Punkte ohne genügend Proben)`, 'cam'); return;
-    }
-    // Kontrolle an 3 neuen Punkten, die nicht kalibriert wurden
-    box.querySelector('p').textContent = 'Kontrolle: noch drei Punkte anschauen.';
-    const vpts = [[X(0.35), Y(0.4)], [X(0.68), Y(0.62)], [X(0.5), Y(0.15)]];
-    const errs = [];
-    for (let j = 0; j < vpts.length; j++) {
-      const est = await atPoint(box, vpts[j][0], vpts[j][1], `Kontrolle ${j + 1} von 3`, () => collect(1200));
-      if (est) errs.push({ dx: Math.abs(est[0] - vpts[j][0]), dy: Math.abs(est[1] - vpts[j][1]) });
-    }
-    box.remove(); gz.busy = false;
-    gz.vw = innerWidth; gz.vh = innerHeight; gz.calibrated = true; gz.hist = [];
-    const mean = f => errs.length ? errs.reduce((a, e) => a + f(e), 0) / errs.length * 100 : NaN;
-    const pct = Math.round(mean(e => Math.hypot(e.dx, e.dy))), ph = Math.round(mean(e => e.dx)), pv = Math.round(mean(e => e.dy));
-    const verdict = !isFinite(pct) ? 'Kontrolle nicht möglich.' : pct <= 10 ? 'gut genug für die sechs Beschwerdefelder.' : pct <= 18 ? 'knapp: eher nur für die sechs grossen Felder, für die Skala Pfeiltasten oder Abtastmodus.' : 'zu ungenau. Licht von vorn, Kopf ruhiger, Abstand 50–70 cm, dann neu kalibrieren.';
-    $('camNote').textContent = `Kalibriert (${pts.length} Punkte). Mittlere Abweichung ${pct} % der Bildschirmgrösse (horizontal ${ph} %, vertikal ${pv} %): ${verdict} Taste C justiert die Mitte nach.`;
-    log(`Blick kalibriert mit WebGazer, ${pts.length} Punkte, Fenster ${innerWidth}×${innerHeight}, Bereich oben ${Math.round(A.y0 * 100)} % unten ${Math.round((1 - A.y1) * 100)} % links ${Math.round(A.x0 * 100)} % rechts ${Math.round((1 - A.x1) * 100)} %. Kontrolle an 3 Punkten: mittlere Abweichung ${pct} % (horizontal ${ph} %, vertikal ${pv} %)`, 'cam');
-    if (isFinite(pct) && !$('optGaze').checked) { $('optGaze').checked = true; $('optDot').checked = true; log('Blick per Kamera eingeschaltet', 'cam'); }
-    render();
   }
   async function recenter() {
     if (!gz.calibrated) { $('camNote').textContent = 'Zuerst den Blick kalibrieren.'; return; }
@@ -935,7 +1013,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (typing(e.target)) { if (e.key === 'Escape') e.target.blur(); return; }
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (k === 'Escape') { $('help').hidden = true; if (areaEdit) setAreaEdit(false); if (gz.busy) gz.abort = true; return; }
+    if (k === 'Escape') { $('help').hidden = true; if (areaEdit) setAreaEdit(false); if (gz.busy) { if (gz.onEsc) gz.onEsc(); else gz.abort = true; } return; }
     if (gz.busy) { e.preventDefault(); return; }   // während Kalibrierung keine Wizard-Tasten
     if (k !== 'w' && !KEYMAP[k]) return;
     e.preventDefault();               // verhindert auch, dass Enter/Leertaste eine fokussierte Schaltfläche auslöst
