@@ -42,7 +42,7 @@ Weitere Punkte:
 
 ### M2 – Kalibrierung überarbeitet (aus B1)
 
-- **Fixierpunkt:** ein Ring mit kleinem schwarzem Kern statt einer grossen Scheibe, damit der Blick genauer auf einer Stelle ruht.
+- **Fixierpunkt:** ein Ring mit kleinem Punkt in der Mitte statt einer grossen Scheibe, damit der Blick genauer auf einer Stelle ruht.
 - **Mehr Daten pro Punkt:** 12–22 Proben über mindestens 1,5 s statt 8–14. Die Einschwingzeit nach dem Erscheinen des Punktes ist länger (0,9 s). Proben werden nur genommen, wenn die Augen sicher offen sind.
 - **Automatische Wiederholung:** Punkte mit zu wenig gültigen Proben werden einmal wiederholt.
 - **Sichtbares Ergebnis:** Nach den 3 Kontrollpunkten zeigt die Seite Zielpunkt und Schätzung mit einer Verbindungslinie. Die Testleitung entscheidet dann «Übernehmen» oder «Neu kalibrieren».

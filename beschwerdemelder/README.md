@@ -92,7 +92,7 @@ Die Leiste unten zeigt jederzeit, **was echt erkannt und was simuliert wird**. D
 2. **Kalibrierbereich:** Mit **Bereich mit Maus anpassen** legen Sie fest, wo die Punkte erscheinen.
 3. **Blick kalibrieren:**
    - Die Seite geht in den Vollbildmodus.
-   - Es erscheinen 9 oder 13 Punkte. Schauen Sie auf den schwarzen Kern, bis der Ring grün wird. Punkte mit zu wenig Messwerten werden automatisch wiederholt.
+   - Es erscheinen 9 oder 13 Punkte. Schauen Sie auf den kleinen Punkt in der Mitte des Rings, bis der Ring grün wird. Punkte mit zu wenig Messwerten werden automatisch wiederholt.
 4. **Kontrolle an 3 neuen Punkten:**
    - Die Seite zeigt Zielpunkt und Schätzung sowie die **mittlere Abweichung in % der Bildschirmgrösse**, gesamt, horizontal und vertikal.
    - Eine systematische Verschiebung wird automatisch korrigiert.

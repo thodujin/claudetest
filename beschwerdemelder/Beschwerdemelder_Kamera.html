@@ -831,7 +831,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     const cancel = box => { box.remove(); gz.busy = false; resetModel(); gz.calibrated = false; $('camNote').textContent = 'Kalibrierung abgebrochen (Esc). Blick per Kamera ist aus.'; $('optGaze').checked = false; log('Kalibrierung abgebrochen (Esc)', 'wiz'); status(); };
 
     for (let attempt = 1; ; attempt++) {
-      const box = calibBox('Schauen Sie auf den schwarzen Punkt in der Mitte, bis der Ring grün wird. Nur die Augen bewegen, Kopf ruhig. Normal blinzeln ist in Ordnung.');
+      const box = calibBox('Schauen Sie auf den kleinen Punkt in der Mitte des Rings, bis der Ring grün wird. Nur die Augen bewegen, Kopf ruhig. Normal blinzeln ist in Ordnung.');
       resetModel();
       gz.calibrated = false; gz.dx = 0; gz.dy = 0; gz.hist = []; clearNear(); gz.abort = false;
       // 1. Durchgang über alle Punkte, 2. Punkte mit zu wenig Proben einmal wiederholen
