@@ -249,7 +249,8 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       <li><b>Durchgang 2:</b> einmal <kbd>F</kbd> für den simulierten Fehler.</li>
       <li>Der Wizard spricht nie. Die Testleitung sagt bei Fragen nur: «Versuchen Sie es so, wie Sie denken.»</li>
     </ol>
-    <p class="small">Vorabtest: «Freies Schauen» zählt 2 Minuten lang Fehlauslösungen. «Bewusstes Blinzeln» zählt, wie viele absichtliche lange Blinzeln erkannt werden; die Testleitung zählt mit, wie viele es waren.</p>
+    <p class="small">Vorabtest: «Freies Schauen» zählt 2 Minuten lang Fehlauslösungen. «Bewusstes Blinzeln» zählt, wie viele absichtliche lange Blinzeln erkannt werden; die Testleitung drückt bei jedem angesagten Versuch die Leertaste, daraus ergibt sich die Erkennungsrate.</p>
+    <p class="small">Ton: hoch = Mindestdauer erreicht, jetzt öffnen. Tief = länger als «Max ms», wird verworfen. Das Protokoll nennt bei jedem Ereignis die Quelle: Kamera (echt erkannt), Wizard, Maus oder System.</p>
     <button type="button" id="btnHelpClose">Schliessen</button>
   </div>
 </div>
@@ -269,8 +270,9 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     { id: 'durst', label: 'Durst' }, { id: 'hunger', label: 'Hunger' }, { id: 'lage', label: 'Unbequeme Lage' }
   ];
   const ACTIVE = ['beschwerde', 'staerke', 'pruefen', 'gesendet'];
-  const SCAN = ['beschwerde', 'staerke', 'pruefen'];
-  const S = { screen: 'ruhe', focus: null, complaint: null, level: null, scan: false, paused: false, pausedBy: null, pauseCount: 0, run: 1, runStart: Date.now(), busy: false, lastMsg: null, test: null };
+  const SCAN = ['beschwerde', 'staerke', 'pruefen', 'gesendet'];
+  const newCnt = () => ({ long: 0, short: 0, tooLong: 0, gone: 0, wiz: 0, maus: 0, sim: 0 });
+  const S = { screen: 'ruhe', focus: null, complaint: null, level: null, scan: false, paused: false, pausedBy: null, pauseCount: 0, run: 1, runStart: Date.now(), busy: false, lastMsg: null, test: null, cnt: newCnt() };
   const messages = [], logLines = [];
   const $ = id => document.getElementById(id);
   const stage = $('stage');
@@ -278,11 +280,16 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
 
   const pad = n => String(n).padStart(2, '0');
   const clock = () => { const d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
-  const since = () => { const s = Math.round((Date.now() - S.runStart) / 1000); return pad(Math.floor(s / 60)) + ':' + pad(s % 60); };
-  function log(text, kind) {
-    logLines.push({ text: `D${S.run} ${since()}  ${text}`, kind: kind || '' });
+  const appStart = Date.now();
+  const mmss = ms => { const t = Math.max(0, ms) / 1000; return pad(Math.floor(t / 60)) + ':' + (t % 60).toFixed(1).padStart(4, '0'); };
+  // Quelle jedes Ereignisses: cam = Kamera (echt erkannt), wiz = Wizard (Tastatur/Steuerung), maus = Mausklick, sim = simulierter Fehler, sys = System
+  const SRC = { cam: 'Kamera', wiz: 'Wizard', maus: 'Maus', sim: 'Wizard', sys: 'System' };
+  function log(text, src = 'sys') {
+    const sim = src === 'sim';
+    const t = Date.now();
+    logLines.push({ text: `D${S.run}  ${mmss(t - S.runStart)}  ges ${mmss(t - appStart)}  ${SRC[src].padEnd(6)}  ${sim ? '[SIMULIERTER FEHLER] ' : ''}${text}`, kind: sim ? 'sim' : src === 'cam' ? 'cam' : '' });
     const el = $('log');
-    el.innerHTML = logLines.map(l => `<div class="${l.kind}">${l.text.replace(/</g, '&lt;')}</div>`).join('');
+    el.innerHTML = logLines.map(l => `<div class="${l.kind}">${l.text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>`).join('');
     el.scrollTop = el.scrollHeight;
   }
 
@@ -345,14 +352,31 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     $('chipRun').textContent = 'Durchgang ' + S.run;
     const hint = $('hint');
     if (S.paused && S.pauseCount >= 2 && !S.scan) { hint.hidden = false; hint.textContent = 'Zweite Pause in diesem Durchgang: Abtastmodus anbieten (A).'; }
-    else if (S.run === 2 && ['beschwerde', 'staerke'].includes(S.screen) && !logLines.some(l => l.kind === 'sim' && l.text.startsWith('D2'))) { hint.hidden = false; hint.textContent = 'Durchgang 2: einmal F drücken (simulierter Fehler).'; }
+    else if (S.run === 2 && ['beschwerde', 'staerke'].includes(S.screen) && !S.cnt.sim) { hint.hidden = false; hint.textContent = 'Durchgang 2: einmal F drücken (simulierter Fehler).'; }
     else hint.hidden = true;
     $('devStatus').textContent = S.paused ? 'Blick verloren' : 'Gerät bereit';
     $('devStatus').className = 'chip' + (S.paused ? ' warn' : ' on');
+    disclose();
     renderNurse();
   }
 
-  function go(screen, focus = null) { S.screen = screen; S.focus = S.scan && SCAN.includes(screen) ? 0 : focus; gz.votes = []; render(); }
+  // Feste Leiste: was ist gerade echt erkannt, was simuliert?
+  function disclose() {
+    const camOn = cam.on;
+    const blinkTxt = camOn ? 'Blinzeln: Kamera (echt), Leertaste = Wizard' : 'Blinzeln: Wizard (Leertaste)';
+    const markTxt = S.scan ? 'Markierung: Abtastmodus (automatisch, kein Blick)'
+      : $('optGaze').checked ? 'Markierung: Blick per Kamera (experimentell), Pfeiltasten = Wizard'
+      : 'Markierung: Wizard (Pfeiltasten) – Blick wird simuliert';
+    const pauseTxt = camOn && $('optPause').checked ? 'Pause: Kamera (echt) oder P' : 'Pause: Wizard (P)';
+    const simTxt = S.cnt.sim ? ` · simulierte Fehler in D${S.run}: ${S.cnt.sim}` : '';
+    $('disclose').textContent = `${blinkTxt} · ${markTxt} · ${pauseTxt}${simTxt}`;
+  }
+
+  function go(screen, focus = null) {
+    S.screen = screen; S.focus = S.scan && SCAN.includes(screen) ? 0 : focus; gz.votes = [];
+    if (S.scan) startScanTimer();
+    render();
+  }
   function flashThen(key, fn) {
     const el = stage.querySelector(`.target[data-k="${key}"]`);
     if (!el) return fn();
@@ -364,19 +388,25 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     backTimer = setTimeout(() => { if (S.screen === screen) { go('ruhe'); log('Zurück in Ruhe'); } }, ms);
   }
 
+  // Langes Blinzeln (src: cam | wiz | maus). Wählt das aktuell fest markierte Feld.
   function blink(src) {
-    const tag = src === 'cam' ? ' (Kamera)' : src === 'maus' ? ' (Maus)' : ' (Wizard)';
-    const kind = src === 'cam' ? 'cam' : '';
-    if (S.busy || S.test) return;
-    if (S.paused) { log('Langes Blinzeln ignoriert, Pause' + tag, kind); return; }
-    if (S.screen === 'ruhe') { log('Aktiviert' + tag, kind); go('beschwerde'); return; }
+    if (S.test) {
+      // Im Vorabtest «Bewusstes Blinzeln» zählt die Leertaste die angesagten Versuche der Testleitung.
+      if (src === 'wiz' && S.test.kind === 'delib') { S.test.tries++; log(`Test: Versuch ${S.test.tries} angesagt`, 'wiz'); updateTest(); }
+      return;
+    }
+    if (src === 'wiz') S.cnt.wiz++; else if (src === 'maus') S.cnt.maus++;
+    if (S.busy) { log('Langes Blinzeln ignoriert, Bestätigung läuft noch', src); return; }
+    if (S.paused) { log('Langes Blinzeln ignoriert, Pause', src); return; }
+    if (S.screen === 'ruhe') { log('Aktiviert', src); go('beschwerde'); return; }
     const list = targets();
-    if (S.focus === null || !list.length) { log('Langes Blinzeln ohne Markierung, keine Wahl' + tag, kind); if (list.length) $('camNote').textContent = 'Kein Feld markiert. Feld mit Pfeiltasten markieren, «Blick per Kamera» einschalten oder mit der Maus klicken.'; return; }
+    if (!list.length) { log('Langes Blinzeln ignoriert, nichts zu wählen (' + S.screen + ')', src); return; }
+    if (S.focus === null) { log('Langes Blinzeln ohne Markierung, keine Wahl', src); $('camNote').textContent = 'Kein Feld markiert. Feld mit Pfeiltasten markieren, «Blick per Kamera» einschalten oder mit der Maus klicken.'; return; }
     const k = list[S.focus];
-    log('Gewählt: ' + tgtLabel(k) + tag, kind);
+    log('Gewählt: ' + tgtLabel(k), src);
     flashThen(k, () => {
       if (k === 'abbrechen') { log('Abgebrochen, nichts gesendet'); settle('abgebrochen', 2500); return; }
-      if (S.screen === 'beschwerde') { if (k === 'zurueck') return go('ruhe'); S.complaint = k; return go('staerke'); }
+      if (S.screen === 'beschwerde') { if (k === 'zurueck') { log('Zurück zu Ruhe'); return go('ruhe'); } S.complaint = k; return go('staerke'); }
       if (S.screen === 'staerke') {
         if (k === 'zurueck') return go('beschwerde', COMPLAINTS.findIndex(c => c.id === S.complaint));
         S.level = Number(k.slice(1)); return go('pruefen', 0);
@@ -387,7 +417,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
         messages.push(m); S.lastMsg = m; log(`Gesendet: ${cname(m.complaint)} ${m.level}/10`);
         return go('gesendet');
       }
-      if (S.screen === 'gesendet' && k === 'zuruecknehmen') { S.lastMsg.withdrawn = true; log('Meldung zurückgenommen'); settle('zurueckgenommen', 3000); }
+      if (S.screen === 'gesendet' && k === 'zuruecknehmen') { S.lastMsg.withdrawn = true; log('Meldung zurückgenommen, Pflegeansicht aktualisiert'); settle('zurueckgenommen', 3000); }
     });
   }
 
@@ -409,42 +439,50 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
 
   function setPause(on, by) {
     if (on === S.paused) return;
-    if (on && !ACTIVE.includes(S.screen)) return;
+    if (on && !ACTIVE.includes(S.screen)) { if (by === 'wiz') log('Pause nur in aktiven Zuständen möglich', 'wiz'); return; }
     S.paused = on; S.pausedBy = on ? by : null;
-    if (on) { S.pauseCount++; log(`Pause: Blick verloren (${S.pauseCount}. im Durchgang)${by === 'cam' ? ' (Kamera)' : ' (Wizard)'}`, by === 'cam' ? 'cam' : ''); }
-    else log('Blick wieder da' + (by === 'cam' ? ' (Kamera)' : ' (Wizard)'), by === 'cam' ? 'cam' : '');
+    if (on) { S.pauseCount++; log(`Pause: «Ich sehe Ihre Augen nicht» (${S.pauseCount}. im Durchgang)`, by); if (S.pauseCount === 2 && !S.scan) log('Hinweis an Testleitung: Abtastmodus anbieten (A)'); }
+    else log('Pause beendet, Augen wieder erkannt', by);
     render();
   }
-  function toggleScan() {
-    S.scan = !S.scan; log(S.scan ? 'Abtastmodus an' : 'Abtastmodus aus');
+  function startScanTimer() {
+    // Bei jedem Bildschirmwechsel neu starten, damit das erste Feld volle 2 s leuchtet.
     clearInterval(scanTimer);
-    if (S.scan) {
-      if (SCAN.includes(S.screen)) S.focus = 0;
-      scanTimer = setInterval(() => {
-        if (S.paused || S.busy || S.test || !SCAN.includes(S.screen) || cam.closedSince) return;
-        const n = targets().length; if (!n) return;
-        S.focus = S.focus === null ? 0 : (S.focus + 1) % n; paintFocus();
-      }, 2000);
-    }
+    scanTimer = setInterval(() => {
+      if (S.paused || S.busy || S.test || !SCAN.includes(S.screen) || cam.closedSince || cam.snap) return;
+      const n = targets().length; if (!n) return;
+      S.focus = S.focus === null ? 0 : (S.focus + 1) % n; paintFocus();
+    }, 2000);
+  }
+  function toggleScan(src = 'wiz') {
+    S.scan = !S.scan; log(S.scan ? 'Abtastmodus an' : 'Abtastmodus aus', src);
+    clearInterval(scanTimer);
+    if (S.scan) { if (SCAN.includes(S.screen)) S.focus = 0; startScanTimer(); }
     render();
   }
   function simError() {
     const n = targets().length;
-    if (S.focus === null || !n) { log('F ohne Markierung, nichts verschoben'); return; }
+    if (S.focus === null || n < 2) { log('F ohne Markierung, nichts verschoben', 'wiz'); return; }
     const from = tgtLabel(targets()[S.focus]);
-    S.focus = Math.min(n - 1, S.focus + 1);
-    log(`Simulierter Fehler: Markierung ${from} → ${tgtLabel(targets()[S.focus])}`, 'sim');
+    S.focus = S.focus + 1 < n ? S.focus + 1 : S.focus - 1; // Nachbarfeld, am Ende nach links
+    S.cnt.sim++;
+    log(`Markierung springt ${from} → ${tgtLabel(targets()[S.focus])}`, 'sim');
     paintFocus(); status();
   }
-  function ackMsg(m) {
-    m.ack = true; log(`Pflege quittiert: ${cname(m.complaint)} ${m.level}/10`);
+  function ackMsg(m, src) {
+    m.ack = true; log(`Pflege quittiert: ${cname(m.complaint)} ${m.level}/10`, src);
     if (S.lastMsg === m && S.screen === 'gesendet') settle('kommt', 6000); else renderNurse();
   }
-  function ack() { const m = [...messages].reverse().find(x => !x.ack && !x.withdrawn); if (!m) { log('Quittieren: keine offene Meldung'); return; } ackMsg(m); }
+  function ack(src = 'wiz') { const m = [...messages].reverse().find(x => !x.ack && !x.withdrawn); if (!m) { log('Quittieren: keine offene Meldung', src); return; } ackMsg(m, src); }
+  function runSummary() {
+    const c = S.cnt;
+    return `Bilanz D${S.run}: Kamera lang ${c.long} · kurz verworfen ${c.short} · zu lang ${c.tooLong} · Gesicht weg ${c.gone} · Wizard-Blinzeln ${c.wiz} · Mausklicks ${c.maus} · simulierte Fehler ${c.sim} · Pausen ${S.pauseCount}`;
+  }
   function reset() {
     clearTimeout(backTimer); if (S.scan) toggleScan();
-    S.run++; S.runStart = Date.now(); S.pauseCount = 0; S.paused = false; S.pausedBy = null; S.complaint = null; S.level = null;
-    log('Neuer Durchgang'); go('ruhe');
+    log(runSummary());
+    S.run++; S.runStart = Date.now(); S.pauseCount = 0; S.paused = false; S.pausedBy = null; S.complaint = null; S.level = null; S.cnt = newCnt();
+    log('Neuer Durchgang', 'wiz'); go('ruhe');
   }
   function renderNurse() {
     const box = $('msgs');
@@ -455,18 +493,23 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       <div class="note">${m.withdrawn ? 'Von der Patientin zurückgenommen' : 'Selbstangabe, am Bett mit Ja/Nein bestätigen'}</div>
       ${!m.ack && !m.withdrawn ? `<button type="button" data-ack="${m.id}">Quittieren: ich komme</button>` : (m.ack ? '<span class="small">Quittiert</span>' : '')}</div>`).join('');
   }
-  $('msgs').addEventListener('click', e => { const id = e.target.dataset.ack; const m = id && messages.find(x => x.id === Number(id)); if (m) ackMsg(m); });
+  $('msgs').addEventListener('click', e => { const id = e.target.dataset.ack; const m = id && messages.find(x => x.id === Number(id)); if (m) ackMsg(m, 'maus'); });
 
   /* ---------- Kamera: MediaPipe Face Landmarker ---------- */
-  const cam = { on: false, lm: null, video: $('video'), lastTs: -1, closedSince: 0, beeped: false, faceGoneSince: 0, faceBackSince: 0, reopenAt: 0,
+  // closedSince: Beginn der aktuellen Lidschliessung · openSince: erstes Bild mit offenen Augen (Entprellung)
+  // snap: Schnappschuss der festen Markierung, sobald sich die Augen zu schliessen beginnen
+  const cam = { on: false, lm: null, video: $('video'), lastVT: -1, closedSince: 0, openSince: 0, beeped: false, overBeeped: false, faceGoneSince: 0, faceBackSince: 0, reopenAt: 0, snap: null,
     n: { long: 0, short: 0, tooLong: 0, gone: 0 } };
+  const OPEN_CONFIRM_MS = 60;   // so lange müssen die Augen offen sein, damit eine Schliessung als beendet gilt
+  const HYST = 0.1;             // Hysterese: geschlossen ab Schwelle, wieder offen erst unter Schwelle minus HYST
   let audio = null;
   const num = (id, d) => { const v = parseFloat($(id).value); return isFinite(v) ? v : d; };
-  function beep() {
+  function beep(freq = 660, dur = 0.15) {
     if (!$('optBeep').checked || !audio) return;
+    if (audio.state === 'suspended') audio.resume();
     const o = audio.createOscillator(), g = audio.createGain();
-    o.frequency.value = 660; g.gain.value = 0.15; o.connect(g); g.connect(audio.destination);
-    o.start(); o.stop(audio.currentTime + 0.15);
+    o.frequency.value = freq; g.gain.value = 0.15; o.connect(g); g.connect(audio.destination);
+    o.start(); o.stop(audio.currentTime + dur);
   }
   function showCounts() { $('counts').textContent = `lang erkannt ${cam.n.long} · kurz verworfen ${cam.n.short} · zu lang ${cam.n.tooLong} · Gesicht weg ${cam.n.gone}`; }
   function setCamChip(text, cls) { $('chipCam').textContent = text; $('chipCam').className = 'chip ' + (cls || ''); }
@@ -486,7 +529,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     } catch (e) {
       setCamChip('Modell nicht geladen', 'bad'); $('btnCam').disabled = false;
       $('camNote').textContent = 'Das Erkennungsmodell konnte nicht geladen werden. Internetverbindung prüfen. Die Tastatur funktioniert weiter.';
-      log('Kamera: Modell nicht geladen'); return;
+      log('Kamera: Modell nicht geladen (' + (e && e.message || e) + ')'); return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
@@ -494,10 +537,10 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     } catch (e) {
       setCamChip('Kamera nicht erlaubt', 'bad'); $('btnCam').disabled = false;
       $('camNote').textContent = 'Kein Kamerazugriff. Im Browser die Kamera für diese Seite erlauben, sonst über einen lokalen Server öffnen (siehe Anleitung). Die Tastatur funktioniert weiter.';
-      log('Kamera: kein Zugriff'); return;
+      log('Kamera: kein Zugriff (' + (e && e.name || e) + ')'); return;
     }
     cam.on = true; setCamChip('Kamera an', 'on'); $('btnCam').textContent = 'Kamera läuft';
-    log('Kamera gestartet', 'cam'); loop();
+    log('Kamera gestartet', 'cam'); status(); loop();
   });
 
   function bs(cats, name) { const c = cats.find(x => x.categoryName === name); return c ? c.score : 0; }
@@ -505,8 +548,9 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   function loop() {
     if (!cam.on) return;
     const now = performance.now();
-    if (cam.video.readyState >= 2 && now !== cam.lastTs) {
-      cam.lastTs = now;
+    // nur neue Videobilder auswerten
+    if (cam.video.readyState >= 2 && cam.video.currentTime !== cam.lastVT) {
+      cam.lastVT = cam.video.currentTime;
       let res = null;
       try { res = cam.lm.detectForVideo(cam.video, now); } catch (e) { res = null; }
       const cats = res && res.faceBlendshapes && res.faceBlendshapes[0] ? res.faceBlendshapes[0].categories : null;
@@ -523,8 +567,9 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       $('fill').style.width = '0';
       cam.faceBackSince = 0;
       if (!cam.faceGoneSince) cam.faceGoneSince = now;
-      if (now - cam.faceGoneSince > 700 && $('optPause').checked && !S.paused && ACTIVE.includes(S.screen) && !S.test) { cam.n.gone++; showCounts(); setPause(true, 'cam'); }
-      cam.closedSince = 0; cam.beeped = false;
+      if (now - cam.faceGoneSince > 700 && $('optPause').checked && !S.paused && ACTIVE.includes(S.screen) && !S.test) { cam.n.gone++; S.cnt.gone++; showCounts(); setPause(true, 'cam'); }
+      // Eine laufende Schliessung verfällt: ohne Gesicht wird nie gewählt
+      cam.closedSince = 0; cam.openSince = 0; cam.beeped = false; cam.overBeeped = false; cam.snap = null;
       return;
     }
     cam.faceGoneSince = 0;
@@ -533,20 +578,36 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       if (now - cam.faceBackSince > 500) setPause(false, 'cam');
     }
     const closed = (bs(cats, 'eyeBlinkLeft') + bs(cats, 'eyeBlinkRight')) / 2;
-    const f = $('fill'); f.style.width = Math.min(100, closed * 100) + '%'; f.classList.toggle('closed', closed > thr);
-    if (closed > thr) {
-      if (!cam.closedSince) { cam.closedSince = now; cam.beeped = false; }
+    const f = $('fill'); f.style.width = Math.min(100, closed * 100) + '%';
+    const isClosed = cam.closedSince ? closed > thr - HYST : closed > thr;
+    f.classList.toggle('closed', isClosed);
+
+    // Schnappschuss der festen Markierung, sobald sich die Augen zu schliessen beginnen (Blickpunkt friert ein)
+    const closing = isClosed || closed >= thr * 0.6;
+    if (closing && !cam.snap) cam.snap = { screen: S.screen, k: S.focus !== null ? targets()[S.focus] : null };
+
+    if (isClosed) {
+      cam.openSince = 0;
+      if (!cam.closedSince) { cam.closedSince = now; cam.beeped = false; cam.overBeeped = false; }
       const d = now - cam.closedSince;
-      if (!cam.beeped && d >= longMs && d <= maxMs) { cam.beeped = true; beep(); }
+      if (!cam.beeped && d >= longMs && d <= maxMs) { cam.beeped = true; beep(660, 0.15); }          // Mindestdauer erreicht
+      if (!cam.overBeeped && d > maxMs) { cam.overBeeped = true; beep(300, 0.3); }                  // zu lang, wird verworfen
     } else if (cam.closedSince) {
-      const d = now - cam.closedSince; cam.closedSince = 0; cam.reopenAt = now;
-      if (d >= longMs && d <= maxMs) { cam.n.long++; onLongBlink(d); }
-      else if (d > maxMs) { cam.n.tooLong++; log(`Augen ${Math.round(d)} ms zu, zu lang, keine Wahl (Kamera)`, 'cam'); if (S.test) S.test.tooLong++; }
-      else if (d >= 40) { cam.n.short++; if (S.test) S.test.short++; }
-      showCounts(); if (S.test) updateTest();
+      if (!cam.openSince) cam.openSince = now;
+      if (now - cam.openSince >= OPEN_CONFIRM_MS) {
+        const d = cam.openSince - cam.closedSince;   // Dauer bis zum ersten offenen Bild
+        cam.closedSince = 0; cam.openSince = 0; cam.reopenAt = now;
+        if (d >= longMs && d <= maxMs) { cam.n.long++; S.cnt.long++; onLongBlink(d); }
+        else if (d > maxMs) { cam.n.tooLong++; S.cnt.tooLong++; log(`Augen ${Math.round(d)} ms zu, länger als Max, keine Wahl`, 'cam'); if (S.test) S.test.tooLong++; }
+        else if (d >= 40) { cam.n.short++; S.cnt.short++; if (S.test) S.test.short++; }
+        showCounts(); if (S.test) updateTest();
+      }
     }
-    if (closed < thr * 0.6 && !cam.closedSince && now - cam.reopenAt > 300) { gz.closing = false; gazeFrame(features(cats, res), now); }
-    else if (!gz.closing) { gz.closing = true; gz.snapK = gz.near; }
+    // Blick nur bei sicher offenen Augen auswerten; danach Schnappschuss freigeben
+    if (!closing && !cam.closedSince && now - cam.reopenAt > 300) {
+      cam.snap = null; gz.closing = false;
+      gazeFrame(features(cats, res), now);
+    } else gz.closing = true;
   }
 
   function onLongBlink(d) {
@@ -554,9 +615,12 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       S.test.long++; log(`Test: langes Blinzeln erkannt, ${Math.round(d)} ms`, 'cam'); updateTest(); return;
     }
     log(`Langes Blinzeln erkannt, ${Math.round(d)} ms`, 'cam');
-    if ($('optGaze').checked && gz.snapK && !S.scan && !S.paused) {
-      const i = targets().indexOf(gz.snapK);
-      if (i >= 0 && S.focus !== i) { S.focus = i; paintFocus(); log('Feld am Blickpunkt übernommen: ' + tgtLabel(gz.snapK), 'cam'); }
+    // Gewählt wird, was beim Schliessen fest markiert war – nicht, was danach markiert ist.
+    const snap = cam.snap;
+    if (snap && snap.screen === S.screen && !S.paused) {
+      const i = snap.k ? targets().indexOf(snap.k) : -1;
+      const want = i >= 0 ? i : null;
+      if (S.focus !== want) { S.focus = want; paintFocus(); log('Markierung vom Zeitpunkt des Schliessens verwendet: ' + (snap.k ? tgtLabel(snap.k) : 'keine'), 'cam'); }
     }
     blink('cam');
   }
@@ -694,7 +758,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     $('camNote').textContent = `Kalibriert (${head ? 'Kopf und Augen' : 'nur Augen'}). Mittlere Abweichung etwa ${pct} % der Bildschirmgrösse: ${verdict}`;
     log(`Kalibriert, ${head ? 'Kopf und Augen' : 'nur Augen'}, 13 Punkte, Bereich oben ${Math.round(A.y0 * 100)} % unten ${Math.round((1 - A.y1) * 100)} % links ${Math.round(A.x0 * 100)} % rechts ${Math.round((1 - A.x1) * 100)} %, Kontrolle: mittlere Abweichung ${pct} %`, 'cam');
     gz.x = 0.5; gz.y = 0.5;
-    if (isFinite(pct)) { $('optGaze').checked = true; $('optDot').checked = true; $('disclose').textContent = 'Blinzeln und Blick: Kamera (Blick experimentell)'; log('Blick per Kamera automatisch eingeschaltet', 'cam'); }
+    if (isFinite(pct)) { $('optGaze').checked = true; $('optDot').checked = true; log('Blick per Kamera automatisch eingeschaltet', 'cam'); }
     render();
   }
   async function recenter() {
@@ -762,7 +826,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     areaEdit = on; const el = areaEl(); el.classList.toggle('edit', on);
     clearTimeout(areaTimer); placeArea(); el.hidden = !on;
     $('btnArea').textContent = on ? 'Fertig mit Anpassen' : 'Bereich mit Maus anpassen';
-    if (!on) log(`Kalibrierbereich: oben ${$('calTop').value} %, unten ${$('calBottom').value} %, links ${$('calLeft').value} %, rechts ${$('calRight').value} %`);
+    if (!on) log(`Kalibrierbereich: oben ${$('calTop').value} %, unten ${$('calBottom').value} %, links ${$('calLeft').value} %, rechts ${$('calRight').value} %`, 'maus');
   }
   ['calTop', 'calBottom', 'calLeft', 'calRight'].forEach(id => $(id).addEventListener('input', showArea));
   $('btnArea').addEventListener('click', () => setAreaEdit(!areaEdit));
@@ -777,8 +841,8 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   $('btnCalib').addEventListener('click', calibrate);
   $('optGaze').addEventListener('change', e => {
     if (e.target.checked && !gz.model) { e.target.checked = false; $('camNote').textContent = 'Zuerst kalibrieren.'; return; }
-    log(e.target.checked ? 'Blick per Kamera an (experimentell)' : 'Blick per Kamera aus, Wizard markiert', 'cam');
-    $('disclose').textContent = e.target.checked ? 'Blinzeln und Blick: Kamera (Blick experimentell)' : 'Blinzeln: Kamera, wenn gestartet · Blick: Wizard (Pfeiltasten)';
+    log(e.target.checked ? 'Blick per Kamera an (experimentell)' : 'Blick per Kamera aus, Wizard markiert', 'wiz');
+    status();
   });
 
   /* ---------- Vorabtest ---------- */
@@ -786,8 +850,8 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   function startTest(kind) {
     if (!cam.on) { $('camNote').textContent = 'Für den Vorabtest zuerst die Kamera starten.'; return; }
     if (S.test) return endTest();
-    S.test = { kind, start: Date.now(), long: 0, short: 0, tooLong: 0 };
-    log(kind === 'free' ? 'Vorabtest gestartet: freies Schauen 2 Min' : 'Vorabtest gestartet: bewusstes Blinzeln', 'cam');
+    S.test = { kind, start: Date.now(), long: 0, short: 0, tooLong: 0, tries: 0 };
+    log(kind === 'free' ? 'Vorabtest gestartet: freies Schauen 2 Min' : 'Vorabtest gestartet: bewusstes Blinzeln (Leertaste = Versuch angesagt)', 'wiz');
     $(kind === 'free' ? 'btnFree' : 'btnDelib').textContent = 'Test beenden';
     render();
     testTimer = setInterval(() => { updateTest(); if (S.test && S.test.kind === 'free' && Date.now() - S.test.start >= 120000) endTest(); }, 500);
@@ -795,14 +859,14 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   function updateTest() {
     const el = $('testSub'); if (!el || !S.test) return;
     const s = Math.floor((Date.now() - S.test.start) / 1000);
-    el.textContent = (S.test.kind === 'free' ? `noch ${Math.max(0, 120 - s)} s · ` : `${s} s · `) + `lange erkannt ${S.test.long} · kurze ${S.test.short}`;
+    el.textContent = (S.test.kind === 'free' ? `noch ${Math.max(0, 120 - s)} s · Fehlauslösungen ${S.test.long}` : `${s} s · Versuche ${S.test.tries} · erkannt ${S.test.long}`) + ` · kurze ${S.test.short} · zu lange ${S.test.tooLong}`;
   }
   function endTest() {
     clearInterval(testTimer); const t = S.test; if (!t) return;
     const dur = Math.round((Date.now() - t.start) / 1000);
     log(t.kind === 'free'
       ? `Vorabtest freies Schauen, ${dur} s: ${t.long} Fehlauslösungen (lang erkannt), ${t.short} kurze, ${t.tooLong} zu lange`
-      : `Vorabtest bewusstes Blinzeln, ${dur} s: ${t.long} lange erkannt, ${t.short} kurze, ${t.tooLong} zu lange (Versuche der Testleitung notieren)`, 'cam');
+      : `Vorabtest bewusstes Blinzeln, ${dur} s: ${t.tries} Versuche angesagt, ${t.long} lange erkannt${t.tries ? ` (${Math.round(Math.min(t.long, t.tries) / t.tries * 100)} %)` : ''}, ${t.short} kurze, ${t.tooLong} zu lange`, 'cam');
     S.test = null; $('btnFree').textContent = 'Freies Schauen 2 Min'; $('btnDelib').textContent = 'Bewusstes Blinzeln';
     render();
   }
@@ -814,23 +878,44 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   const toggleHelp = () => { $('help').hidden = !$('help').hidden; };
   const toggleFold = () => { $('panel').hidden = !$('panel').hidden; const c = $('console'); if ($('panel').hidden) { c.dataset.h = c.style.height; c.style.height = ''; } else if (c.dataset.h) c.style.height = c.dataset.h; };
   const ACT = { blink: () => blink('wiz'), left: () => move('left'), right: () => move('right'), up: () => move('up'), down: () => move('down'),
-    clear: () => { S.focus = null; paintFocus(); log('Blick unklar: keine Markierung'); },
-    pause: () => setPause(!S.paused, 'wiz'), center: () => recenter(), scan: toggleScan, error: simError, ack, nurse: toggleNurse, reset, help: toggleHelp };
-  document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => ACT[b.dataset.act]()));
+    clear: () => { S.focus = null; paintFocus(); log('Blick unklar: keine Markierung', 'wiz'); },
+    pause: () => setPause(!S.paused, 'wiz'), center: () => recenter(), scan: () => toggleScan('wiz'), error: simError, ack: () => ack('wiz'), nurse: toggleNurse, reset, help: toggleHelp };
+  document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => { ACT[b.dataset.act](); b.blur(); }));
   $('btnFold').addEventListener('click', toggleFold);
   $('btnNurseClose').addEventListener('click', toggleNurse);
   $('btnHelpClose').addEventListener('click', toggleHelp);
+  // Nach Klick auf Checkbox oder Auswahlliste den Fokus abgeben, sonst schalten Leertaste und Pfeile diese um statt den Wizard.
+  document.querySelectorAll('#console input[type=checkbox], #console select').forEach(el => el.addEventListener('change', () => { el.blur(); status(); }));
+  const typing = t => (t.tagName === 'INPUT' && !['checkbox', 'radio', 'button'].includes(t.type)) || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT';
+  const KEYMAP = { c: 'center', ' ': 'blink', Enter: 'blink', ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', x: 'clear', p: 'pause', a: 'scan', f: 'error', q: 'ack', n: 'nurse', r: 'reset', h: 'help' };
   document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT') return;
-    const map = { c: 'center', ' ': 'blink', Enter: 'blink', ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', x: 'clear', p: 'pause', a: 'scan', f: 'error', q: 'ack', n: 'nurse', r: 'reset', h: 'help' };
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (typing(e.target)) { if (e.key === 'Escape') e.target.blur(); return; }
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (k === 'w') { toggleFold(); e.preventDefault(); return; }
     if (k === 'Escape') { $('help').hidden = true; if (areaEdit) setAreaEdit(false); return; }
-    if (map[k]) { e.preventDefault(); ACT[map[k]](); }
+    if (k !== 'w' && !KEYMAP[k]) return;
+    e.preventDefault();               // verhindert auch, dass Enter/Leertaste eine fokussierte Schaltfläche auslöst
+    if (e.repeat) return;             // gedrückt gehaltene Taste löst nur einmal aus
+    if (k === 'w') { toggleFold(); return; }
+    ACT[KEYMAP[k]]();
   });
+  // Leertaste löst Schaltflächen und Checkboxen erst beim Loslassen aus – hier unterdrücken
+  document.addEventListener('keyup', e => { if (e.key === ' ' && !typing(e.target)) e.preventDefault(); });
   addEventListener('resize', paintFocus);
 
-  const logText = () => logLines.map(l => l.text + (l.kind === 'sim' ? '  [simuliert]' : '')).join('\n');
+  function logText() {
+    const d = new Date();
+    const head = [
+      'Beschwerdemelder – Testprotokoll (Testprototyp, kein Medizinprodukt)',
+      `Exportiert: ${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
+      `Einstellungen: Schwelle ${num('thr', 0.5)} · Lang ab ${num('longMs', 800)} ms · Max ${num('maxMs', 3000)} ms · Glättung ${num('smoothMs', 350)} ms · Markieren nach ${num('dwellMs', 700)} ms · Gesicht weg = Pause ${$('optPause').checked ? 'an' : 'aus'}`,
+      `Zimmer ${$('room').value} · Bett ${$('bed').value} (Beispielwerte)`,
+      'Spalten: Durchgang · Zeit im Durchgang · Zeit seit Programmstart · Quelle (Kamera = echt erkannt, Wizard = Testleitung, Maus = Klick, System) · Ereignis',
+      'Zeilen mit [SIMULIERTER FEHLER] wurden absichtlich mit F ausgelöst.',
+      ''
+    ];
+    return head.concat(logLines.map(l => l.text), ['', runSummary() + ' (bis Export)']).join('\n');
+  }
   $('btnCopy').addEventListener('click', () => {
     const note = $('copyNote');
     const fallback = () => { const r = document.createRange(); r.selectNodeContents($('log')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); note.textContent = 'Markiert, jetzt kopieren.'; };
@@ -838,23 +923,26 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   });
   $('btnSave').addEventListener('click', () => {
     const a = document.createElement('a'); const d = new Date();
-    a.href = URL.createObjectURL(new Blob([logText()], { type: 'text/plain' }));
+    a.href = URL.createObjectURL(new Blob([logText()], { type: 'text/plain;charset=utf-8' }));
     a.download = `Testprotokoll_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.txt`;
     a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    log('Protokoll exportiert', 'wiz');
   });
-  $('btnClear').addEventListener('click', () => { logLines.length = 0; $('log').innerHTML = ''; $('copyNote').textContent = ''; });
+  $('btnClear').addEventListener('click', () => {
+    if (!confirm('Protokoll wirklich leeren? Nicht exportierte Einträge gehen verloren.')) return;
+    logLines.length = 0; $('log').innerHTML = ''; $('copyNote').textContent = '';
+  });
 
   /* ---------- Höhe der Steuerung ziehen ---------- */
   (() => {
     const sp = $('splitter'), con = $('console');
-    const setH = h => { h = Math.max(44, Math.min(innerHeight * 0.85, h)); con.style.height = h + 'px'; con.style.maxHeight = 'none'; try { localStorage.setItem('consoleH', String(Math.round(h))); } catch (e) {} };
-    try { const v = Number(localStorage.getItem('consoleH')); if (v) setH(v); } catch (e) {}
+    const setH = h => { h = Math.max(44, Math.min(innerHeight * 0.85, h)); con.style.height = h + 'px'; con.style.maxHeight = 'none'; };
     let drag = false;
     sp.addEventListener('pointerdown', e => { drag = true; sp.classList.add('drag'); sp.setPointerCapture(e.pointerId); e.preventDefault(); });
     sp.addEventListener('pointermove', e => { if (drag) setH(innerHeight - e.clientY - sp.offsetHeight / 2); });
     const end = () => { drag = false; sp.classList.remove('drag'); };
     sp.addEventListener('pointerup', end); sp.addEventListener('pointercancel', end);
-    sp.addEventListener('dblclick', () => { con.style.height = ''; con.style.maxHeight = ''; try { localStorage.removeItem('consoleH'); } catch (e) {} });
+    sp.addEventListener('dblclick', () => { con.style.height = ''; con.style.maxHeight = ''; });
     sp.addEventListener('keydown', e => {
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
       e.preventDefault(); e.stopPropagation(); setH(con.offsetHeight + (e.key === 'ArrowUp' ? 30 : -30));
