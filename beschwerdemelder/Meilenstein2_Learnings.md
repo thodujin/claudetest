@@ -57,6 +57,15 @@ Weitere Punkte:
 | B5 | **Die Kalibrierung ist deutlich besser.** Dazu beigetragen hat auch eine bessere Sitzposition: Abstand 50–70 cm, Kopf ruhig, Licht von vorn. | Die überarbeitete Kalibrierung (M2) beibehalten. Vor jedem Test Abstand, Licht und Kopfhaltung vorgeben und in der Anleitung festhalten. |
 | B6 | **Die Auswahl über drei Felder nebeneinander klappt deutlich besser** als über die Skala mit 11 Feldern. | Bestätigt B2 bis B4. Bei allen Auswahlen das Muster «wenige grosse Felder nebeneinander» verwenden. |
 | B7 | **Grössere Felder würden die Auswahl weiter erleichtern**, besonders Senden, Zurück und Abbrechen. Auf «Stimmt das?» blieb viel Fläche ungenutzt. | Siehe M3. |
+| B8 | **Nach längerer Benutzung werden die Augen müde.** | Ermüdung als eigenes Kriterium erheben. Die Zahl der bewussten Blinzeln und die Fixierdauer pro Meldung senken (siehe offene Fragen). |
+
+Mögliche Ursachen von B8, noch nicht geprüft:
+- **Bewusste Lidschlüsse:** Pro Meldung braucht es mindestens 5 lange Blinzeln von je mindestens 0,8 s (Aktivieren, Beschwerde, Bereich, Zahl, Senden).
+- **Fixieren:** Jede Markierung verlangt etwa 0,7 s ruhiges Fixieren, bei ungenauer Schätzung länger oder wiederholt.
+- **Seltener spontan blinzeln:** Bei konzentrierter Bildschirmarbeit blinzelt man seltener, die Augen trocknen aus.
+- **Kalibrierung:** 13 Punkte mit Fixieren kommen zu Beginn noch dazu.
+
+Für die Patientengruppe ist B8 besonders relevant. Wer auf der Intensivstation liegt, ist oft ohnehin erschöpft, und die Augen sind wegen Lagerung oder Beatmung womöglich trocken.
 
 ### M3 – Grössere Auswahlfelder (aus B7)
 
@@ -86,4 +95,6 @@ Die Werte stehen nach jeder Kalibrierung unter «Kamera» und im exportierten Pr
 2. Liegen «Zurück» und «Abbrechen» unter den Feldern gut, oder stören sie, weil sie vertikal angewählt werden müssen?
 3. Ist die vertikale Abweichung in den Messwerten tatsächlich grösser als die horizontale (B3)?
 4. Helfen die Farben oder lenken sie ab? Wirkt Rot für «Stark» alarmierend?
+6. **Augenermüdung (B8) messen:** Nach jedem Durchgang die Ermüdung erfragen, zum Beispiel auf einer Skala von 0 bis 10 («Wie müde sind Ihre Augen?»), und notieren, nach wie vielen Meldungen sie spürbar wird. Wie viele lange Blinzeln und wie viel Zeit eine Meldung braucht, steht im exportierten Protokoll (Bilanz pro Durchgang).
+7. **Massnahmen gegen Ermüdung vergleichen:** kürzere Mindestdauer für langes Blinzeln (zum Beispiel 600 statt 800 ms), weniger Schritte pro Meldung, dunkler Modus gegen Blendung, Kalibrierung mit 9 statt 13 Punkten, Pausen zwischen den Durchgängen.
 5. Wie lange dauert ein ganzer Durchgang von «Ruhe» bis «Gesendet» im Vergleich zur alten Skala? Das lässt sich aus den Zeitstempeln im Protokoll ablesen.
