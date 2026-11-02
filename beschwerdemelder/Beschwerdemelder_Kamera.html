@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beschwerdemelder Kamera</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: Patientenbildschirm füllt das Fenster; die Steuerung für Testleitung und Wizard liegt unten und lässt sich ausblenden. */
+:root {
+  --bg: #e9eff2; --surface: #ffffff; --surface-2: #f4f7f8; --ink: #12202a; --muted: #566873; --line: #c6d1d7;
+  --focus: #d98a00; --focus-tint: rgba(217,138,0,.16); --go: #1c7a58; --go-tint: rgba(28,122,88,.14);
+  --stop: #b03f2b; --stop-tint: rgba(176,63,43,.12); --console: #dfe6ea;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#0c1317; --surface:#152027; --surface-2:#1a262e; --ink:#e4ecef; --muted:#92a3ad; --line:#2b3943;
+    --focus:#f0b13a; --focus-tint:rgba(240,177,58,.18); --go:#45b98d; --go-tint:rgba(69,185,141,.16);
+    --stop:#e27a64; --stop-tint:rgba(226,122,100,.14); --console:#10191e; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 16px; }
+.app { height: 100%; display: grid; grid-template-rows: 1fr auto auto; }
+.splitter { height: 12px; cursor: row-resize; background: var(--console); border-top: 1px solid var(--line); display: grid; place-items: center; touch-action: none; user-select: none; }
+.splitter::before { content: ""; width: 56px; height: 4px; border-radius: 2px; background: var(--muted); opacity: .6; }
+.splitter:hover::before, .splitter.drag::before { background: var(--focus); opacity: 1; }
+
+.stage { position: relative; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 20px; padding: 24px max(16px, 3vw); }
+.stage-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.step { font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.howto { font-size: 15px; color: var(--muted); }
+h1.q { font-size: clamp(30px, 5vw, 52px); line-height: 1.1; margin: 0; }
+.scanbanner { font-size: 16px; padding: 8px 14px; border-radius: 8px; background: var(--focus-tint); border: 1px solid var(--focus); align-self: flex-start; }
+.grid { display: grid; gap: 16px; flex: 1; min-height: 0; }
+.grid.six { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.grid.scale { grid-template-columns: repeat(11, minmax(0,1fr)); align-content: center; }
+@media (max-width: 640px) { .grid.six { grid-template-columns: repeat(2, minmax(0,1fr)); } .grid.scale { grid-template-columns: repeat(6, minmax(0,1fr)); } }
+.target { position: relative; background: var(--surface); border: 2px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px 8px; font-size: clamp(20px, 2.6vw, 30px); font-weight: 700; text-align: center; min-height: 120px; transition: border-color .15s, box-shadow .15s, background .15s; }
+.target svg { width: clamp(44px, 6vw, 72px); height: auto; }
+.target.near { border-color: var(--focus); border-style: dashed; }
+.target.gaze { border-color: var(--focus); border-style: solid; box-shadow: 0 0 0 6px var(--focus-tint); }
+.target.picked { background: var(--go-tint); border-color: var(--go); box-shadow: 0 0 0 6px var(--go-tint); }
+.grid.scale .target { min-height: 150px; font-size: clamp(24px, 3.4vw, 40px); font-variant-numeric: tabular-nums; }
+.scale-ends { display: flex; justify-content: space-between; color: var(--muted); }
+.utility { display: flex; gap: 16px; flex-wrap: wrap; }
+.utility .target { flex: 1 1 160px; min-height: 76px; font-size: 22px; flex-direction: row; }
+.utility .target.cancel { color: var(--stop); }
+.utility .target.send { border-width: 3px; }
+.summary { background: var(--surface); border: 2px solid var(--line); border-radius: 16px; padding: 28px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+.summary svg { width: 88px; height: auto; }
+.summary .what { font-size: clamp(32px, 5vw, 56px); font-weight: 700; line-height: 1.05; }
+.summary .how { font-size: clamp(22px, 3vw, 34px); color: var(--muted); margin-top: 6px; }
+.rest { flex: 1; display: grid; place-items: center; text-align: center; }
+.rest .big { font-size: clamp(30px, 5vw, 52px); font-weight: 700; max-width: 22ch; margin: 0 auto; }
+.rest .sub { font-size: 20px; color: var(--muted); margin-top: 14px; }
+.eye { width: 120px; height: 72px; margin: 0 auto 24px; display: block; color: var(--muted); }
+.rest.ok .big { color: var(--go); }
+.pause, .testbox { position: absolute; inset: 0; z-index: 5; }
+.calib { position: fixed; inset: 0; z-index: 40; }
+.pause { background: color-mix(in srgb, var(--bg) 88%, transparent); display: grid; place-items: center; text-align: center; padding: 24px; }
+.pause .box { background: var(--surface); border: 3px solid var(--focus); border-radius: 16px; padding: 32px; max-width: 34ch; }
+.pause .box strong { display: block; font-size: clamp(26px, 4vw, 40px); margin-bottom: 10px; }
+.pause .box span { font-size: 20px; color: var(--muted); }
+.calib { background: var(--bg); }
+.calib .dot { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: var(--focus); box-shadow: 0 0 0 10px var(--focus-tint); }
+.calib p { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font-size: 22px; color: var(--muted); padding: 0 16px; }
+.calib .prog { position: absolute; inset: auto 0 12% 0; text-align: center; font-family: var(--font-mono); color: var(--muted); }
+.calarea { position: fixed; z-index: 41; border: 3px dashed var(--focus); background: var(--focus-tint); pointer-events: none; }
+.calarea.edit { pointer-events: auto; cursor: move; touch-action: none; }
+.calarea .h { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; background: var(--focus); border: 2px solid var(--surface); border-radius: 5px; display: none; }
+.calarea.edit .h { display: block; }
+.calarea .done { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none; font-weight: 700; }
+.calarea.edit .done { display: block; }
+.calarea .tip { position: absolute; left: 0; right: 0; top: calc(50% + 32px); text-align: center; color: var(--muted); display: none; }
+.calarea.edit .tip { display: block; }
+.calib .dot.ok { background: var(--go); box-shadow: 0 0 0 10px var(--go-tint); }
+.testbox { background: var(--bg); display: grid; place-items: center; text-align: center; }
+.testbox .big { font-size: clamp(28px, 4vw, 44px); font-weight: 700; }
+.testbox .sub { font-size: 20px; color: var(--muted); margin-top: 12px; font-variant-numeric: tabular-nums; }
+.gazedot { position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 3px solid var(--stop); pointer-events: none; z-index: 45; }
+.target { cursor: pointer; }
+
+.console { background: var(--console); font-size: 14px; padding: 10px max(16px, 3vw); max-height: 55vh; overflow: auto; }
+.bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.disclose { font-size: 12.5px; color: var(--muted); margin-right: auto; }
+.chip { font-family: var(--font-mono); font-size: 12.5px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); }
+.chip.warn { border-color: var(--focus); background: var(--focus-tint); }
+.chip.on { border-color: var(--go); background: var(--go-tint); }
+.chip.bad { border-color: var(--stop); background: var(--stop-tint); }
+button, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button.primary { border-color: var(--go); background: var(--go-tint); font-weight: 700; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+kbd { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; margin-right: 6px; background: var(--surface-2); }
+.panel { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr); gap: 16px; margin-top: 10px; }
+@media (max-width: 1000px) { .panel { grid-template-columns: minmax(0,1fr); } }
+.col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.col h3 { margin: 0; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 6px; }
+.keys button { text-align: left; }
+.hint { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--focus-tint); border: 1px solid var(--focus); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row label { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+.row input[type=number], .row input[type=text] { width: 5.5em; font: inherit; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.cam { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #000; }
+.meter { flex: 1; min-width: 160px; display: grid; gap: 6px; }
+.track { position: relative; height: 14px; border-radius: 7px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--go); }
+.fill.closed { background: var(--focus); }
+.thr { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--stop); }
+.counts { font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; line-height: 1.5; }
+.log { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; height: 170px; overflow: auto; white-space: pre-wrap; font-variant-numeric: tabular-nums; }
+.log .sim { color: var(--stop); } .log .cam { color: var(--go); }
+.small { font-size: 12.5px; color: var(--muted); }
+.nurse { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px,100%); background: var(--surface); border-left: 1px solid var(--line); z-index: 20; display: flex; flex-direction: column; padding: 16px; gap: 12px; overflow: auto; }
+.nurse h2 { margin: 0; font-size: 20px; }
+.msg { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; }
+.msg.open { border-color: var(--focus); border-width: 2px; }
+.msg .top { display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; }
+.msg .main { font-size: 22px; font-weight: 700; }
+.msg .note { font-size: 13px; color: var(--muted); }
+.msg.withdrawn .main { text-decoration: line-through; color: var(--muted); }
+.help { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 70%, transparent); z-index: 30; display: grid; place-items: center; padding: 16px; }
+.help .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; max-width: 600px; width: 100%; max-height: 90%; overflow: auto; }
+.help h2 { margin: 0 0 10px; font-size: 20px; }
+.help ol { padding-left: 1.2em; line-height: 1.5; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="stage" id="stage" aria-live="polite"></main>
+
+  <div class="splitter" id="splitter" role="separator" aria-orientation="horizontal" aria-label="Höhe der Steuerung ziehen" tabindex="0" title="Ziehen, um die Höhe zu ändern. Doppelklick setzt zurück."></div>
+  <section class="console" id="console" aria-label="Steuerung">
+    <div class="bar">
+      <strong>Steuerung</strong>
+      <span class="disclose" id="disclose">Blinzeln: Kamera, wenn gestartet · Blick: Wizard (Pfeiltasten) oder experimentell Kamera</span>
+      <span class="chip" id="chipCam">Kamera aus</span>
+      <span class="chip" id="chipScreen">Ruhe</span>
+      <span class="chip" id="chipScan">Abtasten aus</span>
+      <span class="chip" id="chipRun">Durchgang 1</span>
+      <button id="btnFold" type="button"><kbd>W</kbd>ein/aus</button>
+    </div>
+    <div class="panel" id="panel">
+      <div class="col">
+        <h3>Kamera</h3>
+        <div class="row"><button type="button" class="primary" id="btnCam">Kamera starten</button><span class="small" id="camNote">Bild wird nur hier im Browser ausgewertet, nichts wird gespeichert oder gesendet.</span></div>
+        <div class="cam">
+          <video id="video" playsinline muted></video>
+          <div class="meter">
+            <span class="small">Augen geschlossen (rote Linie = Schwelle)</span>
+            <div class="track"><div class="fill" id="fill"></div><div class="thr" id="thrLine"></div></div>
+            <div class="counts" id="counts">lang erkannt 0 · kurz verworfen 0 · zu lang 0 · Gesicht weg 0</div>
+          </div>
+        </div>
+        <div class="row">
+          <label for="thr">Schwelle <input type="number" id="thr" min="0.2" max="0.9" step="0.05" value="0.5"></label>
+          <label for="longMs">Lang ab ms <input type="number" id="longMs" min="300" max="3000" step="50" value="800"></label>
+          <label for="maxMs">Max ms <input type="number" id="maxMs" min="1000" max="8000" step="100" value="3000"></label>
+        </div>
+        <div class="row">
+          <label for="optPause"><input type="checkbox" id="optPause" checked> Gesicht weg = Pause</label>
+          <label for="optBeep"><input type="checkbox" id="optBeep" checked> Ton bei langem Blinzeln</label>
+        </div>
+        <div class="row">
+          <label for="optGaze"><input type="checkbox" id="optGaze"> Blick per Kamera (experimentell)</label>
+          <select id="calMode" aria-label="Kalibriermodus"><option value="head">Kopf und Augen</option><option value="eyes">Nur Augen</option></select>
+          <button type="button" id="btnCalib">Kalibrieren</button>
+          <button type="button" id="btnCenter"><kbd>C</kbd>Mitte nachjustieren</button>
+          <label for="optDot"><input type="checkbox" id="optDot"> Blickpunkt zeigen</label>
+        </div>
+        <div class="row">
+          <label for="calTop">Kalibrierbereich oben % <input type="number" id="calTop" min="0" max="45" step="1" value="6"></label>
+          <label for="calBottom">unten % <input type="number" id="calBottom" min="0" max="45" step="1" value="6"></label>
+          <label for="calLeft">links % <input type="number" id="calLeft" min="0" max="45" step="1" value="6"></label>
+          <label for="calRight">rechts % <input type="number" id="calRight" min="0" max="45" step="1" value="6"></label>
+          <button type="button" id="btnArea">Bereich mit Maus anpassen</button>
+        </div>
+        <div class="row">
+          <label for="smoothMs">Glättung ms <input type="number" id="smoothMs" min="0" max="1500" step="50" value="350"></label>
+          <label for="dwellMs">Markieren nach ms <input type="number" id="dwellMs" min="200" max="2000" step="50" value="700"></label>
+        </div>
+      </div>
+
+      <div class="col">
+        <h3>Wizard und Ablauf</h3>
+        <div class="keys">
+          <button type="button" data-act="blink"><kbd>Leer</kbd>Langes Blinzeln</button>
+          <button type="button" data-act="right"><kbd>←→↑↓</kbd>Blick bewegen</button>
+          <button type="button" data-act="clear"><kbd>X</kbd>Blick unklar</button>
+          <button type="button" data-act="pause"><kbd>P</kbd>Pause ein/aus</button>
+          <button type="button" data-act="scan"><kbd>A</kbd>Abtastmodus</button>
+          <button type="button" data-act="error"><kbd>F</kbd>Simulierter Fehler</button>
+          <button type="button" data-act="ack"><kbd>Q</kbd>Pflege quittiert</button>
+          <button type="button" data-act="nurse"><kbd>N</kbd>Pflegeansicht</button>
+          <button type="button" data-act="reset"><kbd>R</kbd>Neuer Durchgang</button>
+          <button type="button" data-act="help"><kbd>H</kbd>Anleitung</button>
+        </div>
+        <div class="hint" id="hint" hidden></div>
+        <h3>Technischer Vorabtest</h3>
+        <div class="row">
+          <button type="button" id="btnFree">Freies Schauen 2 Min</button>
+          <button type="button" id="btnDelib">Bewusstes Blinzeln</button>
+        </div>
+        <span class="small">Während eines Tests wird nichts ausgewählt, nur gezählt.</span>
+      </div>
+
+      <div class="col">
+        <h3>Protokoll</h3>
+        <div class="row">
+          <label for="room">Zimmer <input type="text" id="room" value="3"></label>
+          <label for="bed">Bett <input type="text" id="bed" value="1"></label>
+          <span class="small">Beispielwerte</span>
+        </div>
+        <div class="log" id="log"></div>
+        <div class="row">
+          <button type="button" id="btnCopy">Protokoll kopieren</button>
+          <button type="button" id="btnSave">Als Datei speichern</button>
+          <button type="button" id="btnClear">Leeren</button>
+          <span class="small" id="copyNote"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="gazedot" id="gazedot" hidden></div>
+<aside class="nurse" id="nurse" hidden aria-label="Pflegeansicht">
+  <div class="row"><h2>Pflegeansicht</h2><span class="chip" id="devStatus">Gerät bereit</span></div>
+  <div class="small">Gespeichert werden nur Beschwerde, Stärke, Uhrzeit, Zimmer und Bett. Keine Blick oder Kameradaten.</div>
+  <div id="msgs" style="display:grid;gap:10px"></div>
+  <button type="button" id="btnNurseClose"><kbd>N</kbd>Schliessen</button>
+</aside>
+
+<div class="help" id="help" hidden role="dialog" aria-label="Anleitung">
+  <div class="card">
+    <h2>So funktioniert die Hybridversion</h2>
+    <ol>
+      <li><b>Kamera starten</b> und den Zugriff erlauben. Die Testperson so legen, dass ihr Gesicht gut im Bild ist.</li>
+      <li><b>Langes Blinzeln wird echt erkannt:</b> Augen länger als «Lang ab» geschlossen, dann öffnen. Bei aktivem Ton piept es, sobald die Dauer erreicht ist.</li>
+      <li><b>Blick:</b> Standard ist der Wizard mit Pfeiltasten (Feld markieren, wenn der Blick etwa 1 Sekunde darauf ruht). Experimentell: Kalibrieren, dann «Blick per Kamera» einschalten.</li>
+      <li><b>Gesicht nicht im Bild:</b> Pause wird automatisch gesetzt. Zweite Pause im Durchgang: Abtastmodus anbieten (<kbd>A</kbd>). Im Abtastmodus braucht es nur noch Blinzeln, alles ist echt.</li>
+      <li><b>Leertaste</b> bleibt als Notfall für den Wizard, falls die Kamera ein Blinzeln verpasst. Im Protokoll steht, ob Kamera oder Wizard ausgelöst hat.</li>
+      <li><b>Durchgang 2:</b> einmal <kbd>F</kbd> für den simulierten Fehler.</li>
+      <li>Der Wizard spricht nie. Die Testleitung sagt bei Fragen nur: «Versuchen Sie es so, wie Sie denken.»</li>
+    </ol>
+    <p class="small">Vorabtest: «Freies Schauen» zählt 2 Minuten lang Fehlauslösungen. «Bewusstes Blinzeln» zählt, wie viele absichtliche lange Blinzeln erkannt werden; die Testleitung zählt mit, wie viele es waren.</p>
+    <button type="button" id="btnHelpClose">Schliessen</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const ICON = {
+    schmerzen: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" aria-hidden="true"><path d="M27 4 13 27h10l-4 17 17-25H26l4-15z"/></svg>',
+    atemnot: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 5v15M24 20c-3 0-5 2-7 3M24 20c3 0 5 2 7 3"/><path d="M17 15c-6 3-10 12-10 20 0 4 3 7 7 6 4-1 6-3 6-7V21"/><path d="M31 15c6 3 10 12 10 20 0 4-3 7-7 6-4-1-6-3-6-7V21"/></svg>',
+    uebelkeit: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><circle cx="24" cy="24" r="19"/><path d="M12 20c3-3 6 3 9 0s6 3 9 0 6 3 6 0"/><path d="M12 29c3-3 6 3 9 0s6 3 9 0 6 3 6 0"/></svg>',
+    durst: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" aria-hidden="true"><path d="M13 7h22l-3 34H16z"/><path d="M15 19h18"/><path d="M24 26c-2 3-3 4-3 6a3 3 0 0 0 6 0c0-2-1-3-3-6z"/></svg>',
+    hunger: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 5v11a5 5 0 0 0 10 0V5M18 5v38"/><path d="M34 5c-5 4-5 15 0 19v19"/></svg>',
+    lage: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 22v20M5 36h38M43 30v12M5 30h38"/><path d="M9 30v-6h11v6"/><path d="M26 14a9 9 0 0 1 14 3"/><path d="M41 11v6h-6"/></svg>'
+  };
+  const COMPLAINTS = [
+    { id: 'schmerzen', label: 'Schmerzen' }, { id: 'atemnot', label: 'Atemnot' }, { id: 'uebelkeit', label: 'Übelkeit' },
+    { id: 'durst', label: 'Durst' }, { id: 'hunger', label: 'Hunger' }, { id: 'lage', label: 'Unbequeme Lage' }
+  ];
+  const ACTIVE = ['beschwerde', 'staerke', 'pruefen', 'gesendet'];
+  const SCAN = ['beschwerde', 'staerke', 'pruefen'];
+  const S = { screen: 'ruhe', focus: null, complaint: null, level: null, scan: false, paused: false, pausedBy: null, pauseCount: 0, run: 1, runStart: Date.now(), busy: false, lastMsg: null, test: null };
+  const messages = [], logLines = [];
+  const $ = id => document.getElementById(id);
+  const stage = $('stage');
+  let scanTimer = null, backTimer = null;
+
+  const pad = n => String(n).padStart(2, '0');
+  const clock = () => { const d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const since = () => { const s = Math.round((Date.now() - S.runStart) / 1000); return pad(Math.floor(s / 60)) + ':' + pad(s % 60); };
+  function log(text, kind) {
+    logLines.push({ text: `D${S.run} ${since()}  ${text}`, kind: kind || '' });
+    const el = $('log');
+    el.innerHTML = logLines.map(l => `<div class="${l.kind}">${l.text.replace(/</g, '&lt;')}</div>`).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function targets() {
+    if (S.screen === 'beschwerde') return [...COMPLAINTS.map(c => c.id), 'zurueck', 'abbrechen'];
+    if (S.screen === 'staerke') return [...Array.from({ length: 11 }, (_, i) => 'l' + i), 'zurueck', 'abbrechen'];
+    if (S.screen === 'pruefen') return ['senden', 'zurueck', 'abbrechen'];
+    if (S.screen === 'gesendet') return S.lastMsg && !S.lastMsg.ack && !S.lastMsg.withdrawn ? ['zuruecknehmen'] : [];
+    return [];
+  }
+  const cols = () => S.screen === 'beschwerde' ? (innerWidth <= 640 ? 2 : 3) : S.screen === 'staerke' ? (innerWidth <= 640 ? 6 : 11) : 1;
+  const cname = id => (COMPLAINTS.find(c => c.id === id) || {}).label || id;
+  const tgtLabel = k => /^l\d+$/.test(k) ? 'Stufe ' + k.slice(1) : ({ zurueck: 'Zurück', abbrechen: 'Abbrechen', senden: 'Senden', zuruecknehmen: 'Zurücknehmen' })[k] || cname(k);
+  const util = keys => '<div class="utility">' + keys.map(k => `<div class="target ${k === 'abbrechen' ? 'cancel' : k === 'senden' ? 'send' : ''}" data-k="${k}">${tgtLabel(k)}</div>`).join('') + '</div>';
+
+  function render() {
+    let h = '';
+    const how = '<span class="howto">Anschauen markiert · lang blinzeln wählt</span>';
+    const scanB = S.scan && SCAN.includes(S.screen) ? '<div class="scanbanner">Die Felder leuchten nacheinander auf. Blinzeln Sie lang beim richtigen Feld.</div>' : '';
+    if (S.screen === 'ruhe') {
+      h = `<div class="rest"><div><svg class="eye" viewBox="0 0 120 72" fill="none" stroke="currentColor" stroke-width="4" aria-hidden="true"><path d="M6 36c14-22 34-32 54-32s40 10 54 32c-14 22-34 32-54 32S20 58 6 36z"/><circle cx="60" cy="36" r="14"/></svg>
+        <p class="big">Lang blinzeln, um etwas zu melden</p><p class="sub">Das Gerät reagiert erst danach auf Ihren Blick.</p></div></div>`;
+    } else if (S.screen === 'beschwerde') {
+      h = `<div class="stage-head"><span class="step">Schritt 1 von 3</span>${how}</div><h1 class="q">Was haben Sie?</h1>${scanB}
+        <div class="grid six">${COMPLAINTS.map(c => `<div class="target" data-k="${c.id}">${ICON[c.id]}<span>${c.label}</span></div>`).join('')}</div>${util(['zurueck', 'abbrechen'])}`;
+    } else if (S.screen === 'staerke') {
+      h = `<div class="stage-head"><span class="step">Schritt 2 von 3 · ${cname(S.complaint)}</span>${how}</div><h1 class="q">Wie stark?</h1>${scanB}
+        <div class="grid scale">${Array.from({ length: 11 }, (_, i) => `<div class="target" data-k="l${i}">${i}</div>`).join('')}</div>
+        <div class="scale-ends"><span>0 = gar nicht</span><span>10 = am stärksten</span></div>${util(['zurueck', 'abbrechen'])}`;
+    } else if (S.screen === 'pruefen') {
+      h = `<div class="stage-head"><span class="step">Schritt 3 von 3</span>${how}</div><h1 class="q">Stimmt das?</h1>${scanB}
+        <div class="summary">${ICON[S.complaint]}<div><div class="what">${cname(S.complaint)}</div><div class="how">Stärke ${S.level} von 10</div></div></div>${util(['senden', 'zurueck', 'abbrechen'])}`;
+    } else if (S.screen === 'gesendet') {
+      const m = S.lastMsg;
+      h = `<div class="rest ok"><div><p class="big">Gesendet: ${cname(m.complaint)}, ${m.level} von 10</p><p class="sub">Die Pflege ist informiert. Bitte warten.</p></div></div>${targets().length ? util(['zuruecknehmen']) : ''}`;
+    } else if (S.screen === 'kommt') {
+      h = `<div class="rest ok"><div><p class="big">Die Pflege kommt.</p><p class="sub">${cname(S.lastMsg.complaint)}, ${S.lastMsg.level} von 10</p></div></div>`;
+    } else if (S.screen === 'zurueckgenommen') {
+      h = `<div class="rest"><div><p class="big">Meldung zurückgenommen.</p><p class="sub">Es wurde nichts weitergeleitet.</p></div></div>`;
+    } else if (S.screen === 'abgebrochen') {
+      h = `<div class="rest"><div><p class="big">Abgebrochen.</p><p class="sub">Es wurde nichts gesendet.</p></div></div>`;
+    }
+    if (S.paused) h += `<div class="pause"><div class="box"><strong>Ich sehe Ihre Augen nicht.</strong><span>Bitte ruhig liegen bleiben. Es wird nichts gewählt.</span></div></div>`;
+    if (S.test) h += `<div class="testbox"><div><p class="big">${S.test.kind === 'free' ? 'Bitte schauen Sie ganz normal umher.' : 'Bitte blinzeln Sie lang, wenn die Testleitung es sagt.'}</p><p class="sub" id="testSub"></p></div></div>`;
+    stage.innerHTML = h;
+    paintFocus(); status(); if (S.test) updateTest();
+  }
+
+  function paintFocus() {
+    const list = targets();
+    stage.querySelectorAll('.target').forEach(el => el.classList.toggle('gaze', S.focus !== null && list[S.focus] === el.dataset.k));
+  }
+
+  function status() {
+    const names = { ruhe: 'Ruhe', beschwerde: 'Beschwerde', staerke: 'Stärke', pruefen: 'Prüfen', gesendet: 'Gesendet', kommt: 'Pflege kommt', zurueckgenommen: 'Zurückgenommen', abgebrochen: 'Abgebrochen' };
+    $('chipScreen').textContent = (S.paused ? 'Pause · ' : '') + names[S.screen];
+    $('chipScreen').className = 'chip' + (S.paused ? ' warn' : '');
+    $('chipScan').textContent = S.scan ? 'Abtasten an' : 'Abtasten aus';
+    $('chipScan').className = 'chip' + (S.scan ? ' on' : '');
+    $('chipRun').textContent = 'Durchgang ' + S.run;
+    const hint = $('hint');
+    if (S.paused && S.pauseCount >= 2 && !S.scan) { hint.hidden = false; hint.textContent = 'Zweite Pause in diesem Durchgang: Abtastmodus anbieten (A).'; }
+    else if (S.run === 2 && ['beschwerde', 'staerke'].includes(S.screen) && !logLines.some(l => l.kind === 'sim' && l.text.startsWith('D2'))) { hint.hidden = false; hint.textContent = 'Durchgang 2: einmal F drücken (simulierter Fehler).'; }
+    else hint.hidden = true;
+    $('devStatus').textContent = S.paused ? 'Blick verloren' : 'Gerät bereit';
+    $('devStatus').className = 'chip' + (S.paused ? ' warn' : ' on');
+    renderNurse();
+  }
+
+  function go(screen, focus = null) { S.screen = screen; S.focus = S.scan && SCAN.includes(screen) ? 0 : focus; gz.votes = []; render(); }
+  function flashThen(key, fn) {
+    const el = stage.querySelector(`.target[data-k="${key}"]`);
+    if (!el) return fn();
+    S.busy = true; el.classList.add('picked');
+    setTimeout(() => { S.busy = false; fn(); }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 380);
+  }
+  function settle(screen, ms) {
+    clearTimeout(backTimer); go(screen);
+    backTimer = setTimeout(() => { if (S.screen === screen) { go('ruhe'); log('Zurück in Ruhe'); } }, ms);
+  }
+
+  function blink(src) {
+    const tag = src === 'cam' ? ' (Kamera)' : src === 'maus' ? ' (Maus)' : ' (Wizard)';
+    const kind = src === 'cam' ? 'cam' : '';
+    if (S.busy || S.test) return;
+    if (S.paused) { log('Langes Blinzeln ignoriert, Pause' + tag, kind); return; }
+    if (S.screen === 'ruhe') { log('Aktiviert' + tag, kind); go('beschwerde'); return; }
+    const list = targets();
+    if (S.focus === null || !list.length) { log('Langes Blinzeln ohne Markierung, keine Wahl' + tag, kind); if (list.length) $('camNote').textContent = 'Kein Feld markiert. Feld mit Pfeiltasten markieren, «Blick per Kamera» einschalten oder mit der Maus klicken.'; return; }
+    const k = list[S.focus];
+    log('Gewählt: ' + tgtLabel(k) + tag, kind);
+    flashThen(k, () => {
+      if (k === 'abbrechen') { log('Abgebrochen, nichts gesendet'); settle('abgebrochen', 2500); return; }
+      if (S.screen === 'beschwerde') { if (k === 'zurueck') return go('ruhe'); S.complaint = k; return go('staerke'); }
+      if (S.screen === 'staerke') {
+        if (k === 'zurueck') return go('beschwerde', COMPLAINTS.findIndex(c => c.id === S.complaint));
+        S.level = Number(k.slice(1)); return go('pruefen', 0);
+      }
+      if (S.screen === 'pruefen') {
+        if (k === 'zurueck') return go('staerke', S.level);
+        const m = { id: messages.length + 1, complaint: S.complaint, level: S.level, time: clock(), room: $('room').value.trim(), bed: $('bed').value.trim(), ack: false, withdrawn: false };
+        messages.push(m); S.lastMsg = m; log(`Gesendet: ${cname(m.complaint)} ${m.level}/10`);
+        return go('gesendet');
+      }
+      if (S.screen === 'gesendet' && k === 'zuruecknehmen') { S.lastMsg.withdrawn = true; log('Meldung zurückgenommen'); settle('zurueckgenommen', 3000); }
+    });
+  }
+
+  function move(dir) {
+    if (S.paused || S.scan || S.test) return;
+    const n = targets().length; if (!n) return;
+    if (S.focus === null) S.focus = 0;
+    else {
+      const c = cols(), opts = S.screen === 'beschwerde' ? 6 : S.screen === 'staerke' ? 11 : 0;
+      let f = S.focus;
+      if (dir === 'left') f -= 1;
+      if (dir === 'right') f += 1;
+      if (dir === 'down') f = f < opts ? (f + c < opts ? f + c : opts) : f;
+      if (dir === 'up') f = f >= opts ? (opts ? opts - 1 : f) : (f - c >= 0 ? f - c : f);
+      S.focus = Math.max(0, Math.min(n - 1, f));
+    }
+    paintFocus();
+  }
+
+  function setPause(on, by) {
+    if (on === S.paused) return;
+    if (on && !ACTIVE.includes(S.screen)) return;
+    S.paused = on; S.pausedBy = on ? by : null;
+    if (on) { S.pauseCount++; log(`Pause: Blick verloren (${S.pauseCount}. im Durchgang)${by === 'cam' ? ' (Kamera)' : ' (Wizard)'}`, by === 'cam' ? 'cam' : ''); }
+    else log('Blick wieder da' + (by === 'cam' ? ' (Kamera)' : ' (Wizard)'), by === 'cam' ? 'cam' : '');
+    render();
+  }
+  function toggleScan() {
+    S.scan = !S.scan; log(S.scan ? 'Abtastmodus an' : 'Abtastmodus aus');
+    clearInterval(scanTimer);
+    if (S.scan) {
+      if (SCAN.includes(S.screen)) S.focus = 0;
+      scanTimer = setInterval(() => {
+        if (S.paused || S.busy || S.test || !SCAN.includes(S.screen) || cam.closedSince) return;
+        const n = targets().length; if (!n) return;
+        S.focus = S.focus === null ? 0 : (S.focus + 1) % n; paintFocus();
+      }, 2000);
+    }
+    render();
+  }
+  function simError() {
+    const n = targets().length;
+    if (S.focus === null || !n) { log('F ohne Markierung, nichts verschoben'); return; }
+    const from = tgtLabel(targets()[S.focus]);
+    S.focus = Math.min(n - 1, S.focus + 1);
+    log(`Simulierter Fehler: Markierung ${from} → ${tgtLabel(targets()[S.focus])}`, 'sim');
+    paintFocus(); status();
+  }
+  function ackMsg(m) {
+    m.ack = true; log(`Pflege quittiert: ${cname(m.complaint)} ${m.level}/10`);
+    if (S.lastMsg === m && S.screen === 'gesendet') settle('kommt', 6000); else renderNurse();
+  }
+  function ack() { const m = [...messages].reverse().find(x => !x.ack && !x.withdrawn); if (!m) { log('Quittieren: keine offene Meldung'); return; } ackMsg(m); }
+  function reset() {
+    clearTimeout(backTimer); if (S.scan) toggleScan();
+    S.run++; S.runStart = Date.now(); S.pauseCount = 0; S.paused = false; S.pausedBy = null; S.complaint = null; S.level = null;
+    log('Neuer Durchgang'); go('ruhe');
+  }
+  function renderNurse() {
+    const box = $('msgs');
+    if (!messages.length) { box.innerHTML = '<p class="small">Noch keine Meldungen.</p>'; return; }
+    box.innerHTML = [...messages].reverse().map(m => `<div class="msg ${m.withdrawn ? 'withdrawn' : (!m.ack ? 'open' : '')}">
+      <div class="top"><span>Zimmer ${m.room || '?'} · Bett ${m.bed || '?'}</span><span>${m.time}</span></div>
+      <div class="main">${cname(m.complaint)} · ${m.level}/10</div>
+      <div class="note">${m.withdrawn ? 'Von der Patientin zurückgenommen' : 'Selbstangabe, am Bett mit Ja/Nein bestätigen'}</div>
+      ${!m.ack && !m.withdrawn ? `<button type="button" data-ack="${m.id}">Quittieren: ich komme</button>` : (m.ack ? '<span class="small">Quittiert</span>' : '')}</div>`).join('');
+  }
+  $('msgs').addEventListener('click', e => { const id = e.target.dataset.ack; const m = id && messages.find(x => x.id === Number(id)); if (m) ackMsg(m); });
+
+  /* ---------- Kamera: MediaPipe Face Landmarker ---------- */
+  const cam = { on: false, lm: null, video: $('video'), lastTs: -1, closedSince: 0, beeped: false, faceGoneSince: 0, faceBackSince: 0, reopenAt: 0,
+    n: { long: 0, short: 0, tooLong: 0, gone: 0 } };
+  let audio = null;
+  const num = (id, d) => { const v = parseFloat($(id).value); return isFinite(v) ? v : d; };
+  function beep() {
+    if (!$('optBeep').checked || !audio) return;
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.frequency.value = 660; g.gain.value = 0.15; o.connect(g); g.connect(audio.destination);
+    o.start(); o.stop(audio.currentTime + 0.15);
+  }
+  function showCounts() { $('counts').textContent = `lang erkannt ${cam.n.long} · kurz verworfen ${cam.n.short} · zu lang ${cam.n.tooLong} · Gesicht weg ${cam.n.gone}`; }
+  function setCamChip(text, cls) { $('chipCam').textContent = text; $('chipCam').className = 'chip ' + (cls || ''); }
+
+  $('btnCam').addEventListener('click', async () => {
+    if (cam.on) return;
+    try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
+    setCamChip('Lade Modell…', 'warn'); $('btnCam').disabled = true;
+    try {
+      const V = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+      const vision = await import(V + '/vision_bundle.mjs');
+      const files = await vision.FilesetResolver.forVisionTasks(V + '/wasm');
+      const opts = d => ({ baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task', delegate: d },
+        outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true, runningMode: 'VIDEO', numFaces: 1 });
+      try { cam.lm = await vision.FaceLandmarker.createFromOptions(files, opts('GPU')); }
+      catch (e) { cam.lm = await vision.FaceLandmarker.createFromOptions(files, opts('CPU')); }
+    } catch (e) {
+      setCamChip('Modell nicht geladen', 'bad'); $('btnCam').disabled = false;
+      $('camNote').textContent = 'Das Erkennungsmodell konnte nicht geladen werden. Internetverbindung prüfen. Die Tastatur funktioniert weiter.';
+      log('Kamera: Modell nicht geladen'); return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+      cam.video.srcObject = stream; await cam.video.play();
+    } catch (e) {
+      setCamChip('Kamera nicht erlaubt', 'bad'); $('btnCam').disabled = false;
+      $('camNote').textContent = 'Kein Kamerazugriff. Im Browser die Kamera für diese Seite erlauben, sonst über einen lokalen Server öffnen (siehe Anleitung). Die Tastatur funktioniert weiter.';
+      log('Kamera: kein Zugriff'); return;
+    }
+    cam.on = true; setCamChip('Kamera an', 'on'); $('btnCam').textContent = 'Kamera läuft';
+    log('Kamera gestartet', 'cam'); loop();
+  });
+
+  function bs(cats, name) { const c = cats.find(x => x.categoryName === name); return c ? c.score : 0; }
+
+  function loop() {
+    if (!cam.on) return;
+    const now = performance.now();
+    if (cam.video.readyState >= 2 && now !== cam.lastTs) {
+      cam.lastTs = now;
+      let res = null;
+      try { res = cam.lm.detectForVideo(cam.video, now); } catch (e) { res = null; }
+      const cats = res && res.faceBlendshapes && res.faceBlendshapes[0] ? res.faceBlendshapes[0].categories : null;
+      handleFrame(cats, now, res);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function handleFrame(cats, now, res) {
+    const thr = num('thr', 0.5), longMs = num('longMs', 800), maxMs = num('maxMs', 3000);
+    $('thrLine').style.left = (thr * 100) + '%';
+    // Gesicht weg / wieder da
+    if (!cats) {
+      $('fill').style.width = '0';
+      cam.faceBackSince = 0;
+      if (!cam.faceGoneSince) cam.faceGoneSince = now;
+      if (now - cam.faceGoneSince > 700 && $('optPause').checked && !S.paused && ACTIVE.includes(S.screen) && !S.test) { cam.n.gone++; showCounts(); setPause(true, 'cam'); }
+      cam.closedSince = 0; cam.beeped = false;
+      return;
+    }
+    cam.faceGoneSince = 0;
+    if (S.paused && S.pausedBy === 'cam') {
+      if (!cam.faceBackSince) cam.faceBackSince = now;
+      if (now - cam.faceBackSince > 500) setPause(false, 'cam');
+    }
+    const closed = (bs(cats, 'eyeBlinkLeft') + bs(cats, 'eyeBlinkRight')) / 2;
+    const f = $('fill'); f.style.width = Math.min(100, closed * 100) + '%'; f.classList.toggle('closed', closed > thr);
+    if (closed > thr) {
+      if (!cam.closedSince) { cam.closedSince = now; cam.beeped = false; }
+      const d = now - cam.closedSince;
+      if (!cam.beeped && d >= longMs && d <= maxMs) { cam.beeped = true; beep(); }
+    } else if (cam.closedSince) {
+      const d = now - cam.closedSince; cam.closedSince = 0; cam.reopenAt = now;
+      if (d >= longMs && d <= maxMs) { cam.n.long++; onLongBlink(d); }
+      else if (d > maxMs) { cam.n.tooLong++; log(`Augen ${Math.round(d)} ms zu, zu lang, keine Wahl (Kamera)`, 'cam'); if (S.test) S.test.tooLong++; }
+      else if (d >= 40) { cam.n.short++; if (S.test) S.test.short++; }
+      showCounts(); if (S.test) updateTest();
+    }
+    if (closed < thr * 0.6 && !cam.closedSince && now - cam.reopenAt > 300) { gz.closing = false; gazeFrame(features(cats, res), now); }
+    else if (!gz.closing) { gz.closing = true; gz.snapK = gz.near; }
+  }
+
+  function onLongBlink(d) {
+    if (S.test) {
+      S.test.long++; log(`Test: langes Blinzeln erkannt, ${Math.round(d)} ms`, 'cam'); updateTest(); return;
+    }
+    log(`Langes Blinzeln erkannt, ${Math.round(d)} ms`, 'cam');
+    if ($('optGaze').checked && gz.snapK && !S.scan && !S.paused) {
+      const i = targets().indexOf(gz.snapK);
+      if (i >= 0 && S.focus !== i) { S.focus = i; paintFocus(); log('Feld am Blickpunkt übernommen: ' + tgtLabel(gz.snapK), 'cam'); }
+    }
+    blink('cam');
+  }
+
+  /* ---------- Experimentelle Blickerkennung ---------- */
+  // Merkmale: Irisposition relativ zu den Lidwinkeln, Kopfdrehung und Kopfneigung, Blickwerte der Gesichtserkennung.
+  // Kalibrierung: 9 Punkte, lineare Regression (Ridge) je Achse, danach Kontrolle an 3 neuen Punkten.
+  const gz = { model: null, x: 0.5, y: 0.5, dx: 0, dy: 0, hist: [], votes: [], sampling: null, busy: false, stable: null };
+  function features(cats, res) {
+    const L = res && res.faceLandmarks && res.faceLandmarks[0];
+    if (!L || L.length < 478) return null;
+    const ratio = (iris, a, b) => (iris - a) / ((b - a) || 1e-6);
+    const rH = ratio(L[468].x, L[33].x, L[133].x), lH = ratio(L[473].x, L[362].x, L[263].x);
+    // vertikal relativ zur Linie der Augenwinkel, geteilt durch Augenbreite (unabhängig von den Lidern)
+    const vrel = (iris, a, b) => { const cy = (L[a].y + L[b].y) / 2, w = Math.hypot(L[b].x - L[a].x, L[b].y - L[a].y) || 1e-6; return (L[iris].y - cy) / w; };
+    const rV = vrel(468, 33, 133), lV = vrel(473, 362, 263);
+    let yaw = 0, pitch = 0;
+    const M = res.facialTransformationMatrixes && res.facialTransformationMatrixes[0];
+    if (M && M.data) { const d = M.data; yaw = Math.atan2(d[8], d[10]); pitch = Math.asin(Math.max(-1, Math.min(1, -d[9]))); }
+    const bh = (bs(cats, 'eyeLookOutRight') + bs(cats, 'eyeLookInLeft')) - (bs(cats, 'eyeLookInRight') + bs(cats, 'eyeLookOutLeft'));
+    const bv = (bs(cats, 'eyeLookUpLeft') + bs(cats, 'eyeLookUpRight')) - (bs(cats, 'eyeLookDownLeft') + bs(cats, 'eyeLookDownRight'));
+    return [(rH + lH) / 2, (rV + lV) / 2, yaw, pitch, bh, bv];
+  }
+  function solve(A, b) { // Gauss mit Pivot
+    const n = b.length, M = A.map((r, i) => [...r, b[i]]);
+    for (let c = 0; c < n; c++) {
+      let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+      [M[c], M[p]] = [M[p], M[c]];
+      const v = M[c][c] || 1e-9;
+      for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c] / v; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+    }
+    return M.map((r, i) => r[n] / (r[i] || 1e-9));
+  }
+  function fit(samples) { // samples: [{f, x, y}]
+    const k = samples[0].f.length;
+    const mu = Array(k).fill(0), sd = Array(k).fill(0);
+    samples.forEach(s => s.f.forEach((v, i) => mu[i] += v / samples.length));
+    samples.forEach(s => s.f.forEach((v, i) => sd[i] += (v - mu[i]) ** 2 / samples.length));
+    for (let i = 0; i < k; i++) sd[i] = Math.sqrt(sd[i]) || 1;
+    const z = f => [...f.map((v, i) => (v - mu[i]) / sd[i]), 1];
+    const X = samples.map(s => z(s.f)), K = k + 1, lam = 0.5;
+    const XtX = Array.from({ length: K }, (_, i) => Array.from({ length: K }, (_, j) => X.reduce((a, r) => a + r[i] * r[j], 0) + (i === j && i < k ? lam : 0)));
+    const wx = solve(XtX, Array.from({ length: K }, (_, i) => X.reduce((a, r, n) => a + r[i] * samples[n].x, 0)));
+    const wy = solve(XtX, Array.from({ length: K }, (_, i) => X.reduce((a, r, n) => a + r[i] * samples[n].y, 0)));
+    return f => { const v = z(f); return [v.reduce((a, c, i) => a + c * wx[i], 0), v.reduce((a, c, i) => a + c * wy[i], 0)]; };
+  }
+  function gazeFrame(f, now) {
+    if (!f) return;
+    if (gz.sampling) { gz.sampling.push(f); return; }
+    if (!gz.model) return;
+    let [mx, my] = gz.model(f);
+    mx += gz.dx; my += gz.dy;
+    gz.hist.push({ t: now, x: mx, y: my });
+    const win = num('smoothMs', 350);
+    while (gz.hist.length > 1 && now - gz.hist[0].t > win) gz.hist.shift();
+    const xs = gz.hist.map(p => p.x).sort((p, q) => p - q), ys = gz.hist.map(p => p.y).sort((p, q) => p - q);
+    gz.x = Math.max(0, Math.min(1, xs[xs.length >> 1])); gz.y = Math.max(0, Math.min(1, ys[ys.length >> 1]));
+    gz.raw = [mx, my];
+    const px = gz.x * innerWidth, py = gz.y * innerHeight;
+    const dot = $('gazedot');
+    dot.hidden = !$('optDot').checked; dot.style.left = px + 'px'; dot.style.top = py + 'px';
+    if (!$('optGaze').checked || S.paused || S.scan || S.test || S.busy) { gz.votes = []; gz.near = null; stage.querySelectorAll('.target.near').forEach(e => e.classList.remove('near')); return; }
+    const list = targets(); if (!list.length) return;
+    let best = null, bestD = Infinity;
+    stage.querySelectorAll('.target').forEach(el => {
+      const r = el.getBoundingClientRect();
+      const dx = Math.max(r.left - px, 0, px - r.right), dy = Math.max(r.top - py, 0, py - r.bottom);
+      const d = Math.hypot(dx, dy) + 0.001 * Math.hypot(r.left + r.width / 2 - px, r.top + r.height / 2 - py);
+      if (d < bestD) { bestD = d; best = el.dataset.k; }
+    });
+    gz.near = best;
+    stage.querySelectorAll('.target').forEach(el => el.classList.toggle('near', el.dataset.k === best));
+    // Markieren, wenn ein Feld im Zeitfenster klar am häufigsten getroffen wurde
+    const dwell = num('dwellMs', 700);
+    gz.votes.push({ t: now, k: best });
+    while (gz.votes.length && now - gz.votes[0].t > dwell) gz.votes.shift();
+    if (gz.votes.length < 6 || now - gz.votes[0].t < dwell * 0.8) return;
+    const cnt = {}; gz.votes.forEach(v => cnt[v.k] = (cnt[v.k] || 0) + 1);
+    const [top, n] = Object.entries(cnt).sort((p, q) => q[1] - p[1])[0];
+    const i = list.indexOf(top);
+    if (n / gz.votes.length >= 0.6 && i >= 0 && S.focus !== i) { S.focus = i; paintFocus(); }
+  }
+  async function showPoints(box, pts, label) {
+    const out = [], d = box.querySelector('#cdot'), prog = box.querySelector('.prog');
+    for (let j = 0; j < pts.length; j++) {
+      const [x, y] = pts[j];
+      d.classList.remove('ok'); d.style.left = (x * 100) + '%'; d.style.top = (y * 100) + '%';
+      prog.textContent = `${label} ${j + 1} von ${pts.length}`;
+      await new Promise(r => setTimeout(r, 700));
+      gz.sampling = []; const t0 = performance.now();
+      // sammeln, bis 40 gültige Bilder da sind (höchstens 3,5 s)
+      while (gz.sampling.length < 40 && performance.now() - t0 < 3500) await new Promise(r => setTimeout(r, 50));
+      const s = gz.sampling; gz.sampling = null;
+      d.classList.add('ok'); await new Promise(r => setTimeout(r, 200));
+      out.push({ x, y, s: robust(s) });
+    }
+    return out;
+  }
+  function robust(s) { // Ausreisser je Merkmal per Median und MAD entfernen
+    if (s.length < 5) return s;
+    const k = s[0].length, med = [], mad = [];
+    for (let i = 0; i < k; i++) {
+      const v = s.map(f => f[i]).sort((p, q) => p - q); med[i] = v[v.length >> 1];
+      const dv = s.map(f => Math.abs(f[i] - med[i])).sort((p, q) => p - q); mad[i] = dv[dv.length >> 1] || 1e-6;
+    }
+    const keep = s.filter(f => f.every((v, i) => Math.abs(v - med[i]) <= 3 * mad[i]));
+    return keep.length >= 5 ? keep : s;
+  }
+  function calibBox(text) {
+    const box = document.createElement('div'); box.className = 'calib';
+    box.innerHTML = `<div class="dot" id="cdot"></div><p>${text}</p><div class="prog"></div>`;
+    document.body.appendChild(box); return box;
+  }
+  async function calibrate() {
+    if (!cam.on) { $('camNote').textContent = 'Zuerst die Kamera starten.'; return; }
+    if (gz.busy) return; gz.busy = true; if (areaEdit) setAreaEdit(false);
+    const head = $('calMode').value === 'head';
+    const box = calibBox(head ? 'Punkt anschauen und den Kopf dabei ruhig mitdrehen, so wie es sich natürlich anfühlt.' : 'Punkt anschauen, nur mit den Augen. Kopf ruhig halten. Der Punkt wird grün, wenn er erfasst ist.');
+    const A = area(), X = t => A.x0 + t * (A.x1 - A.x0), Y = t => A.y0 + t * (A.y1 - A.y0);
+    const pts = []; [0, 0.5, 1].forEach(v => [0, 0.5, 1].forEach(u => pts.push([X(u), Y(v)])));
+    pts.push([X(0.25), Y(0.25)], [X(0.75), Y(0.25)], [X(0.25), Y(0.75)], [X(0.75), Y(0.75)]);
+    const cal = await showPoints(box, pts, 'Punkt');
+    if (cal.some(p => p.s.length < 5)) { box.remove(); gz.busy = false; $('camNote').textContent = 'Kalibrierung abgebrochen: Augen an einem Punkt nicht erkannt. Licht und Position prüfen und nochmals versuchen.'; log('Kalibrierung fehlgeschlagen', 'cam'); return; }
+    const samples = []; cal.forEach(p => p.s.forEach(f => samples.push({ f, x: p.x, y: p.y })));
+    gz.model = fit(samples); gz.dx = 0; gz.dy = 0; gz.hist = [];
+    box.querySelector('p').textContent = 'Kontrolle: noch drei Punkte.';
+    const val = await showPoints(box, [[X(0.3), Y(0.5)], [X(0.7), Y(0.5)], [X(0.5), Y(0.25)]], 'Kontrolle');
+    box.remove(); gz.busy = false;
+    const errs = val.filter(p => p.s.length).map(p => {
+      const est = p.s.map(f => gz.model(f)).map(e => e.map((v, i) => v)); const ex = est.map(e => e[0]).sort((a, b) => a - b), ey = est.map(e => e[1]).sort((a, b) => a - b);
+      return Math.hypot(ex[ex.length >> 1] - p.x, ey[ey.length >> 1] - p.y);
+    });
+    const pct = errs.length ? Math.round(errs.reduce((a, b) => a + b, 0) / errs.length * 100) : NaN;
+    const verdict = !isFinite(pct) ? 'Kontrolle nicht möglich.' : pct <= 10 ? 'gut genug für die sechs Beschwerdefelder.' : pct <= 18 ? 'knapp, eher nur für die sechs grossen Felder.' : 'zu ungenau. Licht, Abstand und Kopfhaltung verbessern oder «Kopf und Augen» wählen.';
+    $('camNote').textContent = `Kalibriert (${head ? 'Kopf und Augen' : 'nur Augen'}). Mittlere Abweichung etwa ${pct} % der Bildschirmgrösse: ${verdict}`;
+    log(`Kalibriert, ${head ? 'Kopf und Augen' : 'nur Augen'}, 13 Punkte, Bereich oben ${Math.round(A.y0 * 100)} % unten ${Math.round((1 - A.y1) * 100)} % links ${Math.round(A.x0 * 100)} % rechts ${Math.round((1 - A.x1) * 100)} %, Kontrolle: mittlere Abweichung ${pct} %`, 'cam');
+    gz.x = 0.5; gz.y = 0.5;
+    if (isFinite(pct)) { $('optGaze').checked = true; $('optDot').checked = true; $('disclose').textContent = 'Blinzeln und Blick: Kamera (Blick experimentell)'; log('Blick per Kamera automatisch eingeschaltet', 'cam'); }
+    render();
+  }
+  async function recenter() {
+    if (!gz.model) { $('camNote').textContent = 'Zuerst kalibrieren.'; return; }
+    if (gz.busy) return; gz.busy = true;
+    const box = calibBox('Mitte anschauen.');
+    const [p] = await showPoints(box, [[0.5, 0.5]], 'Mitte');
+    box.remove(); gz.busy = false;
+    if (p.s.length < 5) { $('camNote').textContent = 'Nachjustieren nicht möglich: Augen nicht erkannt.'; return; }
+    const est = p.s.map(f => gz.model(f));
+    const ex = est.map(e => e[0]).sort((a, b) => a - b)[est.length >> 1], ey = est.map(e => e[1]).sort((a, b) => a - b)[est.length >> 1];
+    gz.dx = 0.5 - ex; gz.dy = 0.5 - ey; gz.hist = [];
+    $('camNote').textContent = `Mitte nachjustiert (Verschiebung ${Math.round(Math.hypot(gz.dx, gz.dy) * 100)} %).`;
+    log(`Mitte nachjustiert, Verschiebung ${Math.round(Math.hypot(gz.dx, gz.dy) * 100)} %`, 'cam');
+  }
+  function area() {
+    const c = (id, d) => Math.max(0, Math.min(45, num(id, d))) / 100;
+    return { x0: c('calLeft', 6), x1: 1 - c('calRight', 6), y0: c('calTop', 6), y1: 1 - c('calBottom', 6) };
+  }
+  let areaTimer = null, areaEdit = false;
+  function areaEl() {
+    let el = document.getElementById('calarea');
+    if (el) return el;
+    el = document.createElement('div'); el.id = 'calarea'; el.className = 'calarea'; el.hidden = true;
+    const H = { nw: [0, 0, 'nwse'], n: [50, 0, 'ns'], ne: [100, 0, 'nesw'], e: [100, 50, 'ew'], se: [100, 100, 'nwse'], s: [50, 100, 'ns'], sw: [0, 100, 'nesw'], w: [0, 50, 'ew'] };
+    el.innerHTML = Object.entries(H).map(([k, [x, y, c]]) => `<div class="h" data-h="${k}" style="left:${x}%;top:${y}%;cursor:${c}-resize"></div>`).join('')
+      + '<button type="button" class="done" id="areaDone">Fertig</button><div class="tip">Ecken und Kanten ziehen zum Vergrössern oder Verkleinern, Fläche ziehen zum Verschieben.</div>';
+    document.body.appendChild(el);
+    let drag = null;
+    el.addEventListener('pointerdown', e => {
+      if (!areaEdit || e.target.id === 'areaDone') return;
+      e.preventDefault(); el.setPointerCapture(e.pointerId);
+      drag = { h: e.target.dataset.h || 'move', sx: e.clientX, sy: e.clientY, A: area() };
+    });
+    el.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const dx = (e.clientX - drag.sx) / innerWidth, dy = (e.clientY - drag.sy) / innerHeight;
+      let { x0, x1, y0, y1 } = drag.A; const h = drag.h, min = 0.2;
+      if (h === 'move') { const w = x1 - x0, ht = y1 - y0; x0 = Math.max(0, Math.min(1 - w, x0 + dx)); y0 = Math.max(0, Math.min(1 - ht, y0 + dy)); x1 = x0 + w; y1 = y0 + ht; }
+      else {
+        if (h.includes('w')) x0 = Math.max(0, Math.min(x1 - min, x0 + dx));
+        if (h.includes('e')) x1 = Math.min(1, Math.max(x0 + min, x1 + dx));
+        if (h.includes('n')) y0 = Math.max(0, Math.min(y1 - min, y0 + dy));
+        if (h.includes('s')) y1 = Math.min(1, Math.max(y0 + min, y1 + dy));
+      }
+      $('calLeft').value = Math.round(x0 * 100); $('calRight').value = Math.round((1 - x1) * 100);
+      $('calTop').value = Math.round(y0 * 100); $('calBottom').value = Math.round((1 - y1) * 100);
+      placeArea();
+    });
+    const end = () => { drag = null; };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+    el.querySelector('#areaDone').addEventListener('click', () => setAreaEdit(false));
+    return el;
+  }
+  function placeArea() {
+    const el = areaEl(), A = area();
+    el.style.left = (A.x0 * 100) + '%'; el.style.right = ((1 - A.x1) * 100) + '%';
+    el.style.top = (A.y0 * 100) + '%'; el.style.bottom = ((1 - A.y1) * 100) + '%';
+  }
+  function showArea() {
+    const el = areaEl(); placeArea(); el.hidden = false;
+    clearTimeout(areaTimer); if (!areaEdit) areaTimer = setTimeout(() => { el.hidden = true; }, 2500);
+  }
+  function setAreaEdit(on) {
+    areaEdit = on; const el = areaEl(); el.classList.toggle('edit', on);
+    clearTimeout(areaTimer); placeArea(); el.hidden = !on;
+    $('btnArea').textContent = on ? 'Fertig mit Anpassen' : 'Bereich mit Maus anpassen';
+    if (!on) log(`Kalibrierbereich: oben ${$('calTop').value} %, unten ${$('calBottom').value} %, links ${$('calLeft').value} %, rechts ${$('calRight').value} %`);
+  }
+  ['calTop', 'calBottom', 'calLeft', 'calRight'].forEach(id => $(id).addEventListener('input', showArea));
+  $('btnArea').addEventListener('click', () => setAreaEdit(!areaEdit));
+  $('btnCenter').addEventListener('click', recenter);
+  stage.addEventListener('click', e => {
+    if (S.test || S.busy) return;
+    if (S.screen === 'ruhe') { blink('maus'); return; }
+    const t = e.target.closest('.target'); if (!t) return;
+    const i = targets().indexOf(t.dataset.k); if (i < 0) return;
+    S.focus = i; paintFocus(); blink('maus');
+  });
+  $('btnCalib').addEventListener('click', calibrate);
+  $('optGaze').addEventListener('change', e => {
+    if (e.target.checked && !gz.model) { e.target.checked = false; $('camNote').textContent = 'Zuerst kalibrieren.'; return; }
+    log(e.target.checked ? 'Blick per Kamera an (experimentell)' : 'Blick per Kamera aus, Wizard markiert', 'cam');
+    $('disclose').textContent = e.target.checked ? 'Blinzeln und Blick: Kamera (Blick experimentell)' : 'Blinzeln: Kamera, wenn gestartet · Blick: Wizard (Pfeiltasten)';
+  });
+
+  /* ---------- Vorabtest ---------- */
+  let testTimer = null;
+  function startTest(kind) {
+    if (!cam.on) { $('camNote').textContent = 'Für den Vorabtest zuerst die Kamera starten.'; return; }
+    if (S.test) return endTest();
+    S.test = { kind, start: Date.now(), long: 0, short: 0, tooLong: 0 };
+    log(kind === 'free' ? 'Vorabtest gestartet: freies Schauen 2 Min' : 'Vorabtest gestartet: bewusstes Blinzeln', 'cam');
+    $(kind === 'free' ? 'btnFree' : 'btnDelib').textContent = 'Test beenden';
+    render();
+    testTimer = setInterval(() => { updateTest(); if (S.test && S.test.kind === 'free' && Date.now() - S.test.start >= 120000) endTest(); }, 500);
+  }
+  function updateTest() {
+    const el = $('testSub'); if (!el || !S.test) return;
+    const s = Math.floor((Date.now() - S.test.start) / 1000);
+    el.textContent = (S.test.kind === 'free' ? `noch ${Math.max(0, 120 - s)} s · ` : `${s} s · `) + `lange erkannt ${S.test.long} · kurze ${S.test.short}`;
+  }
+  function endTest() {
+    clearInterval(testTimer); const t = S.test; if (!t) return;
+    const dur = Math.round((Date.now() - t.start) / 1000);
+    log(t.kind === 'free'
+      ? `Vorabtest freies Schauen, ${dur} s: ${t.long} Fehlauslösungen (lang erkannt), ${t.short} kurze, ${t.tooLong} zu lange`
+      : `Vorabtest bewusstes Blinzeln, ${dur} s: ${t.long} lange erkannt, ${t.short} kurze, ${t.tooLong} zu lange (Versuche der Testleitung notieren)`, 'cam');
+    S.test = null; $('btnFree').textContent = 'Freies Schauen 2 Min'; $('btnDelib').textContent = 'Bewusstes Blinzeln';
+    render();
+  }
+  $('btnFree').addEventListener('click', () => S.test && S.test.kind === 'free' ? endTest() : startTest('free'));
+  $('btnDelib').addEventListener('click', () => S.test && S.test.kind === 'delib' ? endTest() : startTest('delib'));
+
+  /* ---------- Bedienung ---------- */
+  const toggleNurse = () => { $('nurse').hidden = !$('nurse').hidden; renderNurse(); };
+  const toggleHelp = () => { $('help').hidden = !$('help').hidden; };
+  const toggleFold = () => { $('panel').hidden = !$('panel').hidden; const c = $('console'); if ($('panel').hidden) { c.dataset.h = c.style.height; c.style.height = ''; } else if (c.dataset.h) c.style.height = c.dataset.h; };
+  const ACT = { blink: () => blink('wiz'), left: () => move('left'), right: () => move('right'), up: () => move('up'), down: () => move('down'),
+    clear: () => { S.focus = null; paintFocus(); log('Blick unklar: keine Markierung'); },
+    pause: () => setPause(!S.paused, 'wiz'), center: () => recenter(), scan: toggleScan, error: simError, ack, nurse: toggleNurse, reset, help: toggleHelp };
+  document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => ACT[b.dataset.act]()));
+  $('btnFold').addEventListener('click', toggleFold);
+  $('btnNurseClose').addEventListener('click', toggleNurse);
+  $('btnHelpClose').addEventListener('click', toggleHelp);
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    const map = { c: 'center', ' ': 'blink', Enter: 'blink', ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', x: 'clear', p: 'pause', a: 'scan', f: 'error', q: 'ack', n: 'nurse', r: 'reset', h: 'help' };
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (k === 'w') { toggleFold(); e.preventDefault(); return; }
+    if (k === 'Escape') { $('help').hidden = true; if (areaEdit) setAreaEdit(false); return; }
+    if (map[k]) { e.preventDefault(); ACT[map[k]](); }
+  });
+  addEventListener('resize', paintFocus);
+
+  const logText = () => logLines.map(l => l.text + (l.kind === 'sim' ? '  [simuliert]' : '')).join('\n');
+  $('btnCopy').addEventListener('click', () => {
+    const note = $('copyNote');
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents($('log')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); note.textContent = 'Markiert, jetzt kopieren.'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(logText()).then(() => { note.textContent = 'Kopiert.'; }, fallback); else fallback();
+  });
+  $('btnSave').addEventListener('click', () => {
+    const a = document.createElement('a'); const d = new Date();
+    a.href = URL.createObjectURL(new Blob([logText()], { type: 'text/plain' }));
+    a.download = `Testprotokoll_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.txt`;
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $('btnClear').addEventListener('click', () => { logLines.length = 0; $('log').innerHTML = ''; $('copyNote').textContent = ''; });
+
+  /* ---------- Höhe der Steuerung ziehen ---------- */
+  (() => {
+    const sp = $('splitter'), con = $('console');
+    const setH = h => { h = Math.max(44, Math.min(innerHeight * 0.85, h)); con.style.height = h + 'px'; con.style.maxHeight = 'none'; try { localStorage.setItem('consoleH', String(Math.round(h))); } catch (e) {} };
+    try { const v = Number(localStorage.getItem('consoleH')); if (v) setH(v); } catch (e) {}
+    let drag = false;
+    sp.addEventListener('pointerdown', e => { drag = true; sp.classList.add('drag'); sp.setPointerCapture(e.pointerId); e.preventDefault(); });
+    sp.addEventListener('pointermove', e => { if (drag) setH(innerHeight - e.clientY - sp.offsetHeight / 2); });
+    const end = () => { drag = false; sp.classList.remove('drag'); };
+    sp.addEventListener('pointerup', end); sp.addEventListener('pointercancel', end);
+    sp.addEventListener('dblclick', () => { con.style.height = ''; con.style.maxHeight = ''; try { localStorage.removeItem('consoleH'); } catch (e) {} });
+    sp.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      e.preventDefault(); e.stopPropagation(); setH(con.offsetHeight + (e.key === 'ArrowUp' ? 30 : -30));
+    });
+  })();
+
+  $('thrLine').style.left = '50%';
+  log('Prototyp gestartet');
+  render();
+})();
+</script>
+</body>
+</html>
