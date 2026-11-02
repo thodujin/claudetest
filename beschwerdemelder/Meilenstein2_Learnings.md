@@ -63,6 +63,14 @@ Weitere Punkte:
 - **Zurück und Abbrechen auf allen Seiten:** mindestens 110 px bzw. 14 % der Fensterhöhe statt 76 px, grössere Schrift.
 - **«Stimmt das?» und «Gesendet»:** Senden, Zurück, Abbrechen und Zurücknehmen füllen den freien Platz, mindestens 24 % der Fensterhöhe.
 
+### M4 – Sicherheit und Feinschliff
+
+- **Nichts vormarkiert:** Auf «Stimmt das?» ist «Senden» beim Erscheinen nicht mehr markiert. Vorher hätte ein einziges unbeabsichtigtes langes Blinzeln sofort gesendet. Jetzt muss «Senden» erst angeschaut werden.
+- **Bereiche bestätigt:** Leicht 0–4, Mittel 5–7, Stark 8–10.
+- **Farbmodus:** Hell und Dunkel lassen sich umschalten, nicht nur automatisch nach Systemeinstellung. Die Bereichsfarben sind auch im dunklen Modus gut erkennbar.
+- **Keine Übergangsanimationen mehr:** Es bleibt nur die kurze grüne Bestätigung beim Wählen.
+- **Kein Überlappen:** Bei kleinem Fenster oder aufgeklappter Steuerung überlappen sich Felder nicht mehr, die Seite scrollt stattdessen.
+
 ## Kennwerte für den nächsten Test (bitte eintragen)
 
 | Durchgang | Abweichung gesamt | horizontal | vertikal | nach Korrektur | Bemerkung (Licht, Brille, Abstand) |
