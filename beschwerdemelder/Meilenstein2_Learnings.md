@@ -101,6 +101,13 @@ Für die Patientengruppe ist B8 besonders relevant. Wer auf der Intensivstation 
 - **Massnahme:** Bei automatischem Bereich liegt je ein Kalibrierpunkt auf jeder Spalte und jeder Reihe: obere Reihe, untere Reihe, Zurück/Abbrechen. Die 4 Zusatzpunkte liegen dazwischen. Die 3 Kontrollpunkte liegen je einer pro Reihe, so misst die Kontrolle die untere Reihe gezielt mit.
 - **Weitere Option, falls B10 bleibt:** Zurück und Abbrechen an die Seiten statt nach unten. Dann hätte die untere Beschwerdereihe nur noch einen vertikalen Nachbarn.
 
+### M8 – Obere Kante dazunehmen (aus B11)
+
+- **Befund B11:** Nach M7 war die **obere** Reihe schwieriger zu wählen. Vorher war es die untere.
+- **Erklärung:** Die Regression von WebGazer staucht Schätzungen zur Mitte hin. Liegen die äussersten Kalibrierpunkte nur auf den Feldmitten, fehlt der Zug nach oben, und ein Blick nach oben landet zu tief.
+- **Massnahme:** Je eine Punktreihe auf dem oberen Rand des Bereichs, auf der oberen Reihe, auf der unteren Reihe und auf Zurück/Abbrechen (4 × 3 Punkte plus 1 Mittelpunkt).
+- **Folgerung für das Design:** Mit drei Ebenen übereinander (2 Beschwerdereihen plus Zurück/Abbrechen) und je etwa 20–25 % Höhe liegt die vertikale Genauigkeit (11–16 %) an der Grenze. Welche Reihe schwierig ist, verschiebt sich mit der Kalibrierung. Robuster wäre ein Layout mit nur zwei Ebenen: Zurück und Abbrechen an die Seiten.
+
 ## Kennwerte für den nächsten Test (bitte eintragen)
 
 | Durchgang | Abweichung gesamt | horizontal | vertikal | nach Korrektur | Bemerkung (Licht, Brille, Abstand) |

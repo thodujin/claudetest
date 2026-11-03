@@ -848,8 +848,13 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     if (FP) {
       // auf jede Spalte × jede Reihe (obere, untere Beschwerdereihe, Zurück/Abbrechen) einen Punkt
       const { xs, ys } = FP, n = xs.length, m = ys.length;
-      ys.forEach(y => xs.forEach(x => pts.push([x, y])));
-      if (nPts === 13) for (let i = 0; i < m - 1 && pts.length < 13; i++) pts.push([mid(xs[0], xs[1]), mid(ys[i], ys[i + 1])], [mid(xs[n - 2], xs[n - 1]), mid(ys[i], ys[i + 1])]);
+      // Regression staucht Schätzungen zur Mitte: zusätzlich eine Punktreihe am oberen Rand des Bereichs,
+      // damit das Modell nach oben «aufgespannt» ist; dazu je eine Reihe auf jeder Feldreihe
+      const levels = nPts === 13 && A.y0 < ys[0] - 0.03 ? [A.y0, ...ys] : ys;
+      levels.forEach(y => xs.forEach(x => pts.push([x, y])));
+      if (nPts === 13 && pts.length < 13) pts.push([xs[Math.floor(n / 2)], mid(ys[0], ys[1])]);
+      while (nPts === 13 && pts.length < 13) pts.push([mid(xs[0], xs[1]), mid(ys[pts.length % (m - 1)], ys[pts.length % (m - 1) + 1])]);
+      pts.splice(13);
       // Kontrolle: drei neue Punkte, je einer pro Reihe (obere, untere Beschwerdereihe, Zurück/Abbrechen)
       vpts = [[mid(xs[0], xs[1]), ys[0]], [mid(xs[n - 2], xs[n - 1]), ys[Math.min(1, m - 1)]], [mid(xs[0], xs[1]), ys[m - 1]]];
     } else {
@@ -900,7 +905,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
         : ph <= 13 && pv <= 18 ? 'brauchbar für drei Felder nebeneinander, bei den Zahlen knapp.'
         : 'zu ungenau. Licht von vorn, Kopf ruhiger (anlehnen), Abstand 50–70 cm, dann neu kalibrieren.';
       const text = `<b>Mittlere Abweichung ${pct} %</b> der Bildschirmgrösse (horizontal ${ph} %, vertikal ${pv} %). Nach Korrektur der Verschiebung etwa ${rest} %.<br>${verdict}${weak.length ? ` ${weak.length} Punkt(e) wurden wiederholt.` : ''}`;
-      log(`Blick kalibriert (Versuch ${attempt}), WebGazer, ${pts.length} Punkte (${weak.length} wiederholt), Fenster ${innerWidth}×${innerHeight}, ${FP ? 'Punkte auf den Feldmitten' : 'Punkte im Raster'}, Bereich oben ${Math.round(A.y0 * 100)} % unten ${Math.round((1 - A.y1) * 100)} % links ${Math.round(A.x0 * 100)} % rechts ${Math.round((1 - A.x1) * 100)} %. Kontrolle: mittlere Abweichung ${pct} % (horizontal ${ph} %, vertikal ${pv} %), Verschiebung x ${Math.round(bx * 100)} % y ${Math.round(by * 100)} %, nach Korrektur ${rest} %`, 'cam');
+      log(`Blick kalibriert (Versuch ${attempt}), WebGazer, ${pts.length} Punkte (${weak.length} wiederholt), Fenster ${innerWidth}×${innerHeight}, ${FP ? 'Punkte auf Feldmitten und oberem Rand' : 'Punkte im Raster'}, Bereich oben ${Math.round(A.y0 * 100)} % unten ${Math.round((1 - A.y1) * 100)} % links ${Math.round(A.x0 * 100)} % rechts ${Math.round((1 - A.x1) * 100)} %. Kontrolle: mittlere Abweichung ${pct} % (horizontal ${ph} %, vertikal ${pv} %), Verschiebung x ${Math.round(bx * 100)} % y ${Math.round(by * 100)} %, nach Korrektur ${rest} %`, 'cam');
       const choice = await showResult(box, vpts, ests, text);
       gz.onEsc = null; box.remove();
       if (choice === 'redo') { log('Neu kalibrieren gewählt', 'wiz'); continue; }
