@@ -1,6 +1,46 @@
 # Beschwerdemelder – Learnings für den Meilenstein-2-Report
 
-Testprototyp für Gesunde, kein Medizinprodukt. Stand: 2. November 2026 (zwei Selbsttests).
+Testprototyp für Gesunde, kein Medizinprodukt. Stand: 3. November 2026 (iterative Selbsttests an zwei Tagen).
+
+## Zusammenfassung für den Report
+
+**Vorgehen:** iterative Selbsttests durch das Projektteam (n = 1) an zwei Tagen. Nach jeder Runde folgte eine Anpassung am Prototyp (M1–M9). Die Befunde sind qualitative Beobachtungen und geben die Richtung vor. Belegt sind sie erst nach Tests mit weiteren Personen.
+
+### Sieben Gestaltungsprinzipien aus den Befunden
+
+| # | Prinzip | Abgeleitet aus | Umgesetzt in |
+|---|---|---|---|
+| P1 | **Wenige grosse Ziele, höchstens drei nebeneinander.** Elf Felder in einer Reihe waren mit dem Blick kaum bedienbar, drei Felder funktionieren gut. | B2, B4, B6 | M1, M9 |
+| P2 | **Horizontal statt vertikal unterscheiden.** Oben/unten ist mit der Webcam deutlich ungenauer als links/rechts. Mehrere Auswahlreihen übereinander führten zu Fehlwahlen, und die schwierige Reihe wechselte mit jeder Kalibrierung. | B3, B10, B11, B12 | M9 (nur noch eine Auswahlreihe plus Zurück/Abbrechen) |
+| P3 | **Erst grob, dann genau.** Zweistufige Auswahl statt einer langen Liste: Gruppe → Beschwerde, Bereich → Zahl. | B2, B4, B12 | M1, M9 |
+| P4 | **Sicherheit vor Tempo.** Folgenreiche Felder sind nie vormarkiert («Senden», «Zurücknehmen»). Ein einzelnes übergrosses Feld ist per Blick dauernd markiert und löst leicht ungewollt aus, «gross» ist also nicht immer besser. | B9 | M4, M5 |
+| P5 | **Die Kalibrierung muss zur Oberfläche passen.** Punkte gehören auf die Felder und an den Rand des Bereichs, nicht in ein neutrales Raster. Das Ergebnis muss sichtbar und messbar sein. | B1, B5, B10, B11 | M2, M6, M7, M8 |
+| P6 | **Rahmenbedingungen gehören zum System.** Licht, Abstand, Kopfhaltung und Tagesform bestimmen die Genauigkeit stärker als die Software. Darum vor jeder Nutzung neu kalibrieren, mit Nachjustieren (C) und Abtastmodus als Rückfallebene. | B5, B13 | M2, M6, Anleitung |
+| P7 | **Jeder Schritt kostet Kraft.** Langes Blinzeln und Fixieren ermüden die Augen. Jeder zusätzliche Schritt (z. B. die Gruppenwahl) muss sich durch weniger Fehlwahlen lohnen. | B8 | Zielkonflikt mit P3, zu messen |
+
+### Zielkonflikte, die der Report benennen sollte
+
+- **Genauigkeit gegen Aufwand:** Zweistufige Auswahl (P1–P3) bedeutet weniger Fehlwahlen, aber ein langes Blinzeln mehr pro Meldung (P7). Atemnot als dringendste Beschwerde braucht jetzt einen Schritt mehr.
+- **Grösse gegen Sicherheit:** Grosse Felder sind leichter zu treffen, aber auch leichter ungewollt zu treffen (P4).
+- **Bewegungsfreiheit gegen Genauigkeit:** Die Blicksteuerung braucht einen ruhigen Kopf. Für Patientinnen und Patienten im Bett ist das schwer einzuhalten.
+
+### Grenzen der bisherigen Erkenntnisse
+
+- nur eine Testperson, Selbsttest durch das Projektteam
+- nur sitzend am Laptop, nicht liegend wie auf der Intensivstation
+- Kennwerte (Abweichung, Dauer, Ermüdung) noch nicht systematisch erhoben
+- die Gruppen-Variante (M9) ist noch nicht getestet
+
+### Nächste Schritte
+
+1. Tests mit Kolleginnen und Kollegen nach der Testanleitung, mit Protokoll und Rückmeldevorlage.
+2. Vergleich «6 Felder» gegen «2 Gruppen à 3»: Fehlwahlen, Dauer pro Meldung, Augenmüdigkeit.
+3. Kennwerte der Kalibrierung (gesamt, horizontal, vertikal) systematisch sammeln, um B3 und B13 zu belegen.
+4. Ein Test liegend oder halb liegend.
+
+---
+
+# Detailprotokoll der Befunde und Massnahmen
 
 ## Kontext des ersten Tests
 
@@ -99,14 +139,14 @@ Für die Patientengruppe ist B8 besonders relevant. Wer auf der Intensivstation 
 - **Ursache 1 (gefunden):** Die Kalibrierpunkte lagen in einem gleichmässigen Raster. Die mittlere Punktreihe fiel dabei auf die Fuge zwischen den beiden Beschwerdereihen. Auf Höhe von Durst/Hunger/Lage gab es keinen Kalibrierpunkt.
 - **Ursache 2 (vermutet):** Die Reihe hat Nachbarn oben und unten, eine vertikale Ungenauigkeit (B3) wirkt sich also in beide Richtungen aus.
 - **Massnahme:** Bei automatischem Bereich liegt je ein Kalibrierpunkt auf jeder Spalte und jeder Reihe: obere Reihe, untere Reihe, Zurück/Abbrechen. Die 4 Zusatzpunkte liegen dazwischen. Die 3 Kontrollpunkte liegen je einer pro Reihe, so misst die Kontrolle die untere Reihe gezielt mit.
-- **Weitere Option, falls B10 bleibt:** Zurück und Abbrechen an die Seiten statt nach unten. Dann hätte die untere Beschwerdereihe nur noch einen vertikalen Nachbarn.
+- **Verworfene Option:** Zurück und Abbrechen an die Seiten statt nach unten. Im Team verworfen, weil diese Funktionen nach der eigentlichen Auswahl unten erwartet werden und seitlich mit den Beschwerden vermischt würden. Gewählt wurde stattdessen M9.
 
 ### M8 – Obere Kante dazunehmen (aus B11)
 
 - **Befund B11:** Nach M7 war die **obere** Reihe schwieriger zu wählen. Vorher war es die untere.
 - **Erklärung:** Die Regression von WebGazer staucht Schätzungen zur Mitte hin. Liegen die äussersten Kalibrierpunkte nur auf den Feldmitten, fehlt der Zug nach oben, und ein Blick nach oben landet zu tief.
 - **Massnahme:** Je eine Punktreihe auf dem oberen Rand des Bereichs, auf der oberen Reihe, auf der unteren Reihe und auf Zurück/Abbrechen (4 × 3 Punkte plus 1 Mittelpunkt).
-- **Folgerung für das Design:** Mit drei Ebenen übereinander (2 Beschwerdereihen plus Zurück/Abbrechen) und je etwa 20–25 % Höhe liegt die vertikale Genauigkeit (11–16 %) an der Grenze. Welche Reihe schwierig ist, verschiebt sich mit der Kalibrierung. Robuster wäre ein Layout mit nur zwei Ebenen: Zurück und Abbrechen an die Seiten.
+- **Folgerung für das Design:** Mit drei Ebenen übereinander (2 Beschwerdereihen plus Zurück/Abbrechen) und je etwa 20–25 % Höhe liegt die vertikale Genauigkeit (11–16 %) an der Grenze. Welche Reihe schwierig ist, verschiebt sich mit der Kalibrierung. Robuster ist ein Layout mit nur einer Auswahlreihe, siehe M9.
 
 ### M9 – Beschwerden in zwei Gruppen (aus B3, B10, B11)
 
@@ -120,6 +160,12 @@ Für die Patientengruppe ist B8 besonders relevant. Wer auf der Intensivstation 
 - **Preis:** ein langes Blinzeln mehr pro Meldung (vgl. B8, Augenermüdung), auch für Atemnot.
 - **Vergleichbarkeit:** Ein Schalter «Beschwerden: 2 Gruppen à 3 / 6 Felder» in der Steuerung erlaubt den Vergleich. Zu messen sind Fehlwahlen, Dauer pro Meldung und Augenmüdigkeit. Das gewählte Layout steht im Protokoll.
 
+### B13 – Genauigkeit schwankt zwischen Sitzungen
+
+- **Befund:** Am zweiten Testtag war die Kalibrierung bei derselben Person, demselben Gerät und demselben Verfahren deutlich schlechter als am Vortag. Laut Ergebnisanzeige lagen die Fehler bei etwa 20–25 %, in verschiedene Richtungen, also keine einfache Verschiebung.
+- **Mögliche Ursachen (ungeprüft):** anderes Licht, andere Sitzposition oder anderer Kamerawinkel, müde Augen (vgl. B8), Kopfbewegung während der Kalibrierung, Zufall bei nur 3 Kontrollpunkten.
+- **Folgerung für das Design:** Eine einmalige Kalibrierung reicht nicht. Vor jeder Nutzung neu kalibrieren, Ergebnis prüfen (Übernehmen / Neu kalibrieren), bei Bedarf C oder Abtastmodus. Auf der Intensivstation ist mit noch stärkeren Schwankungen zu rechnen: Licht, Lagerung, Erschöpfung.
+
 ## Kennwerte für den nächsten Test (bitte eintragen)
 
 | Durchgang | Abweichung gesamt | horizontal | vertikal | nach Korrektur | Bemerkung (Licht, Brille, Abstand) |
@@ -132,9 +178,10 @@ Die Werte stehen nach jeder Kalibrierung unter «Kamera» und im exportierten Pr
 ## Offene Fragen für den nächsten Test
 
 1. Werden die drei Bereichsfelder mit dem Blick zuverlässig getroffen? Und die 5 Zahlen bei «Leicht»? Falls nicht: «Leicht» teilen (0–2 / 3–4) oder 0 als eigenes Feld «keine».
-2. Liegen «Zurück» und «Abbrechen» unter den Feldern gut, oder stören sie, weil sie vertikal angewählt werden müssen?
+2. Lassen sich «Zurück» und «Abbrechen» unter der einen Auswahlreihe zuverlässig treffen?
 3. Ist die vertikale Abweichung in den Messwerten tatsächlich grösser als die horizontale (B3)?
 4. Helfen die Farben oder lenken sie ab? Wirkt Rot für «Stark» alarmierend?
-6. **Augenermüdung (B8) messen:** Nach jedem Durchgang die Ermüdung erfragen, zum Beispiel auf einer Skala von 0 bis 10 («Wie müde sind Ihre Augen?»), und notieren, nach wie vielen Meldungen sie spürbar wird. Wie viele lange Blinzeln und wie viel Zeit eine Meldung braucht, steht im exportierten Protokoll (Bilanz pro Durchgang).
-7. **Massnahmen gegen Ermüdung vergleichen:** kürzere Mindestdauer für langes Blinzeln (zum Beispiel 600 statt 800 ms), weniger Schritte pro Meldung, dunkler Modus gegen Blendung, Kalibrierung mit 9 statt 13 Punkten, Pausen zwischen den Durchgängen.
-5. Wie lange dauert ein ganzer Durchgang von «Ruhe» bis «Gesendet» im Vergleich zur alten Skala? Das lässt sich aus den Zeitstempeln im Protokoll ablesen.
+5. **Augenermüdung (B8) messen:** Nach jedem Durchgang die Ermüdung erfragen, zum Beispiel auf einer Skala von 0 bis 10 («Wie müde sind Ihre Augen?»), und notieren, nach wie vielen Meldungen sie spürbar wird. Wie viele lange Blinzeln und wie viel Zeit eine Meldung braucht, steht im exportierten Protokoll (Bilanz pro Durchgang).
+6. **Massnahmen gegen Ermüdung vergleichen:** kürzere Mindestdauer für langes Blinzeln (zum Beispiel 600 statt 800 ms), weniger Schritte pro Meldung, dunkler Modus gegen Blendung, Kalibrierung mit 9 statt 13 Punkten, Pausen zwischen den Durchgängen.
+7. Wie lange dauert ein ganzer Durchgang von «Ruhe» bis «Gesendet» mit «6 Felder» im Vergleich zu «2 Gruppen à 3»? Das lässt sich aus den Zeitstempeln im Protokoll ablesen.
+8. Sind die Gruppennamen «Körper» und «Bedürfnisse» verständlich? Findet man die gesuchte Beschwerde auf Anhieb in der richtigen Gruppe?
