@@ -108,6 +108,18 @@ Für die Patientengruppe ist B8 besonders relevant. Wer auf der Intensivstation 
 - **Massnahme:** Je eine Punktreihe auf dem oberen Rand des Bereichs, auf der oberen Reihe, auf der unteren Reihe und auf Zurück/Abbrechen (4 × 3 Punkte plus 1 Mittelpunkt).
 - **Folgerung für das Design:** Mit drei Ebenen übereinander (2 Beschwerdereihen plus Zurück/Abbrechen) und je etwa 20–25 % Höhe liegt die vertikale Genauigkeit (11–16 %) an der Grenze. Welche Reihe schwierig ist, verschiebt sich mit der Kalibrierung. Robuster wäre ein Layout mit nur zwei Ebenen: Zurück und Abbrechen an die Seiten.
 
+### M9 – Beschwerden in zwei Gruppen (aus B3, B10, B11)
+
+- **Befund B12:** Bei drei Ebenen übereinander (zwei Beschwerdereihen plus Zurück/Abbrechen) verschiebt sich die schwierige Reihe je nach Kalibrierung. Mit 3 Feldern in einer Reihe klappt die Auswahl besser (B4, B6).
+- **Idee aus dem Team:** Zwei Hauptgruppen.
+- **Massnahme, neuer Ablauf:**
+  1. «Was haben Sie?» mit zwei grossen Feldern nebeneinander: **Körper (Schmerzen, Atemnot, Übelkeit)** und **Bedürfnisse (Durst, Hunger, Unbequeme Lage)**.
+  2. «Was genau?» mit den drei Beschwerden der Gruppe nebeneinander.
+- **Zurück:** von der Beschwerde zur Gruppe, aus «Wie stark?» zurück zur Beschwerde in ihrer Gruppe.
+- **Folge:** Es gibt nirgends mehr zwei Auswahlreihen übereinander, nur noch eine Auswahlreihe plus Zurück/Abbrechen. Das ganze System folgt jetzt einem Muster: erst grob wählen, dann genau, mit höchstens drei Feldern nebeneinander.
+- **Preis:** ein langes Blinzeln mehr pro Meldung (vgl. B8, Augenermüdung), auch für Atemnot.
+- **Vergleichbarkeit:** Ein Schalter «Beschwerden: 2 Gruppen à 3 / 6 Felder» in der Steuerung erlaubt den Vergleich. Zu messen sind Fehlwahlen, Dauer pro Meldung und Augenmüdigkeit. Das gewählte Layout steht im Protokoll.
+
 ## Kennwerte für den nächsten Test (bitte eintragen)
 
 | Durchgang | Abweichung gesamt | horizontal | vertikal | nach Korrektur | Bemerkung (Licht, Brille, Abstand) |

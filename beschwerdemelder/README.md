@@ -32,12 +32,14 @@ Dann `http://localhost:8000/Beschwerdemelder_Kamera.html` in Chrome öffnen.
 ## Ablauf
 
 ```
-Ruhe ──langes Blinzeln──▶ Beschwerde ──▶ Stärke: Bereich ──▶ Stärke: Zahl ──▶ Prüfen ──Senden──▶ Gesendet
- ▲                       (6 Felder)      Leicht 0–4          nur Zahlen des              │
- │                                       Mittel 5–7          Bereichs                    ├─ Zurücknehmen (bis zur Quittung)
- │                                       Stark 8–10                                      ▼
- └────────────────────────────── «Die Pflege kommt» ◀── Pflege quittiert ◀─────────────────┘
+Ruhe ──langes Blinzeln──▶ Beschwerde: Gruppe ──▶ Beschwerde ──▶ Stärke: Bereich ──▶ Stärke: Zahl ──▶ Prüfen ──Senden──▶ Gesendet
+ ▲                        Körper                 (3 Felder     Leicht 0–4          nur Zahlen des              │
+ │                        Bedürfnisse            der Gruppe)   Mittel 5–7          Bereichs                    ├─ Zurücknehmen
+ │                                                             Stark 8–10                                      ▼
+ └──────────────────────────────────────────── «Die Pflege kommt» ◀── Pflege quittiert ◀────────────────────────┘
 ```
+
+- **Gruppen:** Körper (Schmerzen, Atemnot, Übelkeit) und Bedürfnisse (Durst, Hunger, Unbequeme Lage). So liegen nie zwei Auswahlreihen übereinander. In der Steuerung lässt sich auf «6 Felder» umschalten, zum Vergleich.
 
 - **Im Ruhezustand** reagiert das System nicht auf den Blick, nur auf langes Blinzeln.
 - **In jedem aktiven Zustand** gibt es «Zurück» und «Abbrechen». **Abbrechen sendet nie etwas.**

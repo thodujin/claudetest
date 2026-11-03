@@ -45,6 +45,12 @@ h1.q { font-size: clamp(30px, 5vw, 52px); line-height: 1.1; margin: 0; }
 .grid { display: grid; gap: 16px; flex: 1 0 auto; }   /* nie kleiner als der Inhalt: lieber scrollen als überlappen */
 .grid.six { grid-template-columns: repeat(3, minmax(0,1fr)); }
 .grid.bands { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.grid.groups { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.target.group { border-width: 3px; gap: 14px; }
+.target.group .gname { font-size: clamp(32px, 4.8vw, 60px); }
+.target.group .gicons { display: flex; gap: clamp(12px, 2vw, 28px); color: var(--muted); }
+.target.group .gicons svg { width: clamp(34px, 4.2vw, 56px); }
+.target.group .gitems { font-size: clamp(18px, 2vw, 26px); font-weight: 400; color: var(--muted); }
 .grid.nums { grid-auto-flow: column; grid-auto-columns: minmax(0,1fr); }
 @media (max-width: 640px) { .grid.six { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 .target.band { border-width: 3px; gap: 6px; }
@@ -236,6 +242,9 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
         </div>
         <div class="hint" id="hint" hidden></div>
         <div class="row">
+          <label for="layout">Beschwerden <select id="layout"><option value="groups" selected>2 Gruppen à 3</option><option value="six">6 Felder</option></select></label>
+        </div>
+        <div class="row">
           <label for="optAutoAck"><input type="checkbox" id="optAutoAck" checked> Pflege quittiert automatisch nach</label>
           <label for="autoAckS"><input type="number" id="autoAckS" min="2" max="120" step="1" value="10"> s (für Tests ohne Testleitung)</label>
         </div>
@@ -309,11 +318,18 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   const ACTIVE = ['beschwerde', 'staerke', 'pruefen', 'gesendet'];
   // Stärke in zwei Stufen: erst Bereich (3 Felder nebeneinander), dann nur die Zahlen dieses Bereichs
   const BANDS = [{ id: 'leicht', label: 'Leicht', from: 0, to: 4 }, { id: 'mittel', label: 'Mittel', from: 5, to: 7 }, { id: 'stark', label: 'Stark', from: 8, to: 10 }];
+  // Beschwerden in zwei Gruppen à 3: erst Gruppe (2 Felder nebeneinander), dann Beschwerde (3 Felder nebeneinander)
+  const GROUPS = [
+    { id: 'koerper', label: 'Körper', items: ['schmerzen', 'atemnot', 'uebelkeit'] },
+    { id: 'beduerfnisse', label: 'Bedürfnisse', items: ['durst', 'hunger', 'lage'] }
+  ];
+  const grouped = () => $('layout').value !== 'six';
+  const groupOf = id => GROUPS.find(g => g.items.includes(id));
   const bandOf = lvl => BANDS.find(b => lvl >= b.from && lvl <= b.to);
   const bandNums = b => Array.from({ length: b.to - b.from + 1 }, (_, i) => b.from + i);
   const SCAN = ['beschwerde', 'staerke', 'pruefen', 'gesendet'];
   const newCnt = () => ({ long: 0, short: 0, tooLong: 0, gone: 0, wiz: 0, maus: 0, sim: 0 });
-  const S = { screen: 'ruhe', focus: null, complaint: null, level: null, band: null, scan: false, paused: false, pausedBy: null, pauseCount: 0, run: 1, runStart: Date.now(), busy: false, lastMsg: null, test: null, cnt: newCnt() };
+  const S = { screen: 'ruhe', focus: null, complaint: null, level: null, band: null, group: null, scan: false, paused: false, pausedBy: null, pauseCount: 0, run: 1, runStart: Date.now(), busy: false, lastMsg: null, test: null, cnt: newCnt() };
   const messages = [], logLines = [];
   const $ = id => document.getElementById(id);
   const stage = $('stage');
@@ -335,17 +351,20 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   }
 
   function targets() {
-    if (S.screen === 'beschwerde') return [...COMPLAINTS.map(c => c.id), 'zurueck', 'abbrechen'];
+    if (S.screen === 'beschwerde') {
+      if (!grouped()) return [...COMPLAINTS.map(c => c.id), 'zurueck', 'abbrechen'];
+      return S.group ? [...S.group.items, 'zurueck', 'abbrechen'] : [...GROUPS.map(g => 'g_' + g.id), 'zurueck', 'abbrechen'];
+    }
     if (S.screen === 'staerke') return S.band ? [...bandNums(S.band).map(n => 'l' + n), 'zurueck', 'abbrechen'] : [...BANDS.map(b => 'b_' + b.id), 'zurueck', 'abbrechen'];
     if (S.screen === 'pruefen') return ['senden', 'zurueck', 'abbrechen'];
     if (S.screen === 'gesendet') return S.lastMsg && !S.lastMsg.ack && !S.lastMsg.withdrawn ? ['zuruecknehmen'] : [];
     return [];
   }
-  const optCount = () => S.screen === 'beschwerde' ? 6 : S.screen === 'staerke' ? (S.band ? bandNums(S.band).length : 3) : 0;
-  const cols = () => S.screen === 'beschwerde' ? (innerWidth <= 640 ? 2 : 3) : S.screen === 'staerke' ? optCount() : 1;
+  const optCount = () => S.screen === 'beschwerde' ? (!grouped() ? 6 : S.group ? S.group.items.length : GROUPS.length) : S.screen === 'staerke' ? (S.band ? bandNums(S.band).length : 3) : 0;
+  const cols = () => S.screen === 'beschwerde' ? (grouped() ? optCount() : innerWidth <= 640 ? 2 : 3) : S.screen === 'staerke' ? optCount() : 1;
   const cname = id => (COMPLAINTS.find(c => c.id === id) || {}).label || id;
   const bandLabel = b => `${b.label} (${b.from}–${b.to})`;
-  const tgtLabel = k => /^b_/.test(k) ? bandLabel(BANDS.find(b => 'b_' + b.id === k)) : /^l\d+$/.test(k) ? 'Stufe ' + k.slice(1) : ({ zurueck: 'Zurück', abbrechen: 'Abbrechen', senden: 'Senden', zuruecknehmen: 'Zurücknehmen' })[k] || cname(k);
+  const tgtLabel = k => /^g_/.test(k) ? 'Gruppe ' + GROUPS.find(g => 'g_' + g.id === k).label : /^b_/.test(k) ? bandLabel(BANDS.find(b => 'b_' + b.id === k)) : /^l\d+$/.test(k) ? 'Stufe ' + k.slice(1) : ({ zurueck: 'Zurück', abbrechen: 'Abbrechen', senden: 'Senden', zuruecknehmen: 'Zurücknehmen' })[k] || cname(k);
   const util = (keys, cls = '') => `<div class="utility ${cls}">` + keys.map(k => `<div class="target ${k === 'abbrechen' ? 'cancel' : k === 'senden' ? 'send' : ''}" data-k="${k}">${tgtLabel(k)}</div>`).join('') + '</div>';
 
   function render() {
@@ -356,8 +375,12 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       h = `<div class="rest"><div><svg class="eye" viewBox="0 0 120 72" fill="none" stroke="currentColor" stroke-width="4" aria-hidden="true"><path d="M6 36c14-22 34-32 54-32s40 10 54 32c-14 22-34 32-54 32S20 58 6 36z"/><circle cx="60" cy="36" r="14"/></svg>
         <p class="big">Lang blinzeln, um etwas zu melden</p><p class="sub">Das Gerät reagiert erst danach auf Ihren Blick.</p></div></div>`;
     } else if (S.screen === 'beschwerde') {
-      h = `<div class="stage-head"><span class="step">Schritt 1 von 3</span>${how}</div><h1 class="q">Was haben Sie?</h1>${scanB}
-        <div class="grid six">${COMPLAINTS.map(c => `<div class="target" data-k="${c.id}">${ICON[c.id]}<span>${c.label}</span></div>`).join('')}</div>${util(['zurueck', 'abbrechen'])}`;
+      const field = id => `<div class="target" data-k="${id}">${ICON[id]}<span>${cname(id)}</span></div>`;
+      const body = !grouped() ? `<div class="grid six">${COMPLAINTS.map(c => field(c.id)).join('')}</div>`
+        : S.group ? `<div class="grid bands">${S.group.items.map(field).join('')}</div>`
+        : `<div class="grid groups">${GROUPS.map(g => `<div class="target group" data-k="g_${g.id}"><span class="gname">${g.label}</span><span class="gicons">${g.items.map(i => ICON[i]).join('')}</span><span class="gitems">(${g.items.map(cname).join(', ')})</span></div>`).join('')}</div>`;
+      h = `<div class="stage-head"><span class="step">Schritt 1 von 3${S.group ? ' · ' + S.group.label : ''}</span>${how}</div><h1 class="q">${S.group ? 'Was genau?' : 'Was haben Sie?'}</h1>${scanB}
+        ${body}${util(['zurueck', 'abbrechen'])}`;
     } else if (S.screen === 'staerke') {
       h = `<div class="stage-head"><span class="step">Schritt 2 von 3 · ${cname(S.complaint)}</span>${how}</div><h1 class="q">${S.band ? 'Welche Zahl?' : 'Wie stark?'}</h1>${scanB}
         ${S.band
@@ -390,7 +413,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   }
 
   function status() {
-    const names = { ruhe: 'Ruhe', beschwerde: 'Beschwerde', staerke: S.band ? 'Stärke · ' + S.band.label : 'Stärke · Bereich', pruefen: 'Prüfen', gesendet: 'Gesendet', kommt: 'Pflege kommt', zurueckgenommen: 'Zurückgenommen', abgebrochen: 'Abgebrochen' };
+    const names = { ruhe: 'Ruhe', beschwerde: !grouped() ? 'Beschwerde' : S.group ? 'Beschwerde · ' + S.group.label : 'Beschwerde · Gruppe', staerke: S.band ? 'Stärke · ' + S.band.label : 'Stärke · Bereich', pruefen: 'Prüfen', gesendet: 'Gesendet', kommt: 'Pflege kommt', zurueckgenommen: 'Zurückgenommen', abgebrochen: 'Abgebrochen' };
     $('chipScreen').textContent = (S.paused ? 'Pause · ' : '') + names[S.screen];
     $('chipScreen').className = 'chip' + (S.paused ? ' warn' : '');
     $('chipScan').textContent = S.scan ? 'Abtasten an' : 'Abtasten aus';
@@ -445,7 +468,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     if (src === 'wiz') S.cnt.wiz++; else if (src === 'maus') S.cnt.maus++;
     if (S.busy) { log('Langes Blinzeln ignoriert, Bestätigung läuft noch', src); return; }
     if (S.paused) { log('Langes Blinzeln ignoriert, Pause', src); return; }
-    if (S.screen === 'ruhe') { log('Aktiviert', src); go('beschwerde'); return; }
+    if (S.screen === 'ruhe') { log('Aktiviert', src); S.group = null; go('beschwerde'); return; }
     const list = targets();
     if (!list.length) { log('Langes Blinzeln ignoriert, nichts zu wählen (' + S.screen + ')', src); return; }
     if (S.focus === null) { log('Langes Blinzeln ohne Markierung, keine Wahl', src); $('camNote').textContent = 'Kein Feld markiert. Feld mit Pfeiltasten markieren, «Blick per Kamera» einschalten oder mit der Maus klicken.'; return; }
@@ -453,10 +476,18 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     log('Gewählt: ' + tgtLabel(k), src);
     flashThen(k, () => {
       if (k === 'abbrechen') { log('Abgebrochen, nichts gesendet'); settle('abgebrochen', 2500); return; }
-      if (S.screen === 'beschwerde') { if (k === 'zurueck') { log('Zurück zu Ruhe'); return go('ruhe'); } S.complaint = k; S.band = null; return go('staerke'); }
+      if (S.screen === 'beschwerde') {
+        if (k === 'zurueck') {
+          if (S.group) { const i = GROUPS.indexOf(S.group); S.group = null; return go('beschwerde', i); }   // Beschwerde → Gruppe
+          log('Zurück zu Ruhe'); return go('ruhe');
+        }
+        if (k.startsWith('g_')) { S.group = GROUPS.find(g => 'g_' + g.id === k); return go('beschwerde'); }
+        S.complaint = k; S.band = null; return go('staerke');
+      }
       if (S.screen === 'staerke') {
         if (k === 'zurueck') {
           if (S.band) { const i = BANDS.indexOf(S.band); S.band = null; return go('staerke', i); }   // Zahl → Bereich
+          if (grouped()) { S.group = groupOf(S.complaint); return go('beschwerde', S.group.items.indexOf(S.complaint)); }
           return go('beschwerde', COMPLAINTS.findIndex(c => c.id === S.complaint));
         }
         if (k.startsWith('b_')) { S.band = BANDS.find(b => 'b_' + b.id === k); return go('staerke'); }
@@ -541,7 +572,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   function reset() {
     clearTimeout(backTimer); clearTimeout(ackTimer); if (S.scan) toggleScan();
     log(runSummary());
-    S.run++; S.runStart = Date.now(); S.pauseCount = 0; S.paused = false; S.pausedBy = null; S.complaint = null; S.level = null; S.band = null; S.cnt = newCnt();
+    S.run++; S.runStart = Date.now(); S.pauseCount = 0; S.paused = false; S.pausedBy = null; S.complaint = null; S.level = null; S.band = null; S.group = null; S.cnt = newCnt();
     log('Neuer Durchgang', 'wiz'); go('ruhe');
   }
   function renderNurse() {
@@ -850,13 +881,20 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       const { xs, ys } = FP, n = xs.length, m = ys.length;
       // Regression staucht Schätzungen zur Mitte: zusätzlich eine Punktreihe am oberen Rand des Bereichs,
       // damit das Modell nach oben «aufgespannt» ist; dazu je eine Reihe auf jeder Feldreihe
-      const levels = nPts === 13 && A.y0 < ys[0] - 0.03 ? [A.y0, ...ys] : ys;
-      levels.forEach(y => xs.forEach(x => pts.push([x, y])));
-      if (nPts === 13 && pts.length < 13) pts.push([xs[Math.floor(n / 2)], mid(ys[0], ys[1])]);
-      while (nPts === 13 && pts.length < 13) pts.push([mid(xs[0], xs[1]), mid(ys[pts.length % (m - 1)], ys[pts.length % (m - 1) + 1])]);
-      pts.splice(13);
-      // Kontrolle: drei neue Punkte, je einer pro Reihe (obere, untere Beschwerdereihe, Zurück/Abbrechen)
-      vpts = [[mid(xs[0], xs[1]), ys[0]], [mid(xs[n - 2], xs[n - 1]), ys[Math.min(1, m - 1)]], [mid(xs[0], xs[1]), ys[m - 1]]];
+      let levels = ys;
+      if (nPts === 13) {
+        if (A.y0 < ys[0] - 0.03) levels = [A.y0, ...levels];
+        if (levels.length < 4 && A.y1 > ys[m - 1] + 0.03) levels = [...levels, A.y1];   // bei nur einer Feldreihe auch den unteren Rand
+      }
+      levels.slice(0, nPts === 13 ? 4 : 3).forEach(y => xs.forEach(x => pts.push([x, y])));
+      // auffüllen mit Punkten zwischen den Ebenen (Mitte, dann links/rechts), ohne Doppelte
+      const fill = [];
+      for (let i = 0; i < levels.length - 1; i++) fill.push([xs[Math.floor(n / 2)], mid(levels[i], levels[i + 1])], [mid(xs[0], xs[1]), mid(levels[i], levels[i + 1])], [mid(xs[n - 2], xs[n - 1]), mid(levels[i], levels[i + 1])]);
+      for (const f of fill) { if (pts.length >= nPts) break; if (!pts.some(q => Math.abs(q[0] - f[0]) < 0.01 && Math.abs(q[1] - f[1]) < 0.01)) pts.push(f); }
+      pts.splice(nPts);
+      // Kontrolle: drei neue Punkte, über alle Feldreihen verteilt
+      vpts = m >= 3 ? [[mid(xs[0], xs[1]), ys[0]], [mid(xs[n - 2], xs[n - 1]), ys[1]], [mid(xs[0], xs[1]), ys[m - 1]]]
+        : [[mid(xs[0], xs[1]), ys[0]], [mid(xs[n - 2], xs[n - 1]), ys[0]], [xs[Math.floor(n / 2)], ys[m - 1]]];
     } else {
       [0, 0.5, 1].forEach(v => [0, 0.5, 1].forEach(u => pts.push([X(u), Y(v)])));
       if (nPts === 13) pts.push([X(0.25), Y(0.25)], [X(0.75), Y(0.25)], [X(0.25), Y(0.75)], [X(0.75), Y(0.75)]);
@@ -996,18 +1034,18 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   // Die Seite wird dafür kurz im Hintergrund aufgebaut und vermessen, dann sofort zurückgestellt (kein sichtbarer Wechsel).
   function applyFieldsArea() {
     if (S.test) return false;
-    const prev = { screen: S.screen, focus: S.focus, band: S.band, panel: $('panel').hidden, h: $('console').style.height };
-    S.screen = 'beschwerde'; S.focus = null; $('panel').hidden = true; $('console').style.height = '';
+    const prev = { screen: S.screen, focus: S.focus, band: S.band, group: S.group, panel: $('panel').hidden, h: $('console').style.height };
+    S.screen = 'beschwerde'; S.focus = null; S.group = grouped() ? GROUPS[0] : null; $('panel').hidden = true; $('console').style.height = '';
     render();
     const info = [...stage.querySelectorAll('.target')].map(e => ({ k: e.dataset.k, r: e.getBoundingClientRect() })).filter(i => i.r.width && i.r.height);
     const rs = info.map(i => i.r);
     // Mitten der Spalten und Reihen merken: Kalibrierpunkte sollen auf den Feldern liegen, nicht auf den Fugen dazwischen
     const uniq = a => [...new Set(a.map(v => Math.round(v)))].sort((p, q) => p - q);
-    const comp = info.filter(i => COMPLAINTS.some(c => c.id === i.k)), utl = info.filter(i => i.k === 'zurueck' || i.k === 'abbrechen');
+    const comp = info.filter(i => i.k !== 'zurueck' && i.k !== 'abbrechen'), utl = info.filter(i => i.k === 'zurueck' || i.k === 'abbrechen');
     const xs = uniq(comp.map(i => i.r.left + i.r.width / 2)).map(v => v / innerWidth);
     const ys = uniq(comp.map(i => i.r.top + i.r.height / 2)).concat(utl.length ? [Math.round(utl[0].r.top + utl[0].r.height / 2)] : []).map(v => v / innerHeight);
     gz.fieldPts = xs.length >= 2 && ys.length >= 2 ? { xs, ys } : null;
-    Object.assign(S, { screen: prev.screen, focus: prev.focus, band: prev.band }); $('panel').hidden = prev.panel; $('console').style.height = prev.h;
+    Object.assign(S, { screen: prev.screen, focus: prev.focus, band: prev.band, group: prev.group }); $('panel').hidden = prev.panel; $('console').style.height = prev.h;
     render();
     if (!rs.length) return false;
     // Punkte bis knapp in die äusseren Felder hinein (15 % der Feldgrösse nach innen), nicht über leere Flächen
@@ -1143,6 +1181,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
 
   // Farbmodus nur für diese Sitzung (nichts wird gespeichert)
   $('autoAckS').addEventListener('input', status);
+  $('layout').addEventListener('change', e => { S.group = null; log('Layout Beschwerden: ' + (e.target.value === 'six' ? '6 Felder' : '2 Gruppen à 3'), 'wiz'); if (S.screen === 'beschwerde') go('beschwerde'); });
   $('theme').addEventListener('change', e => { if (e.target.value) document.documentElement.dataset.theme = e.target.value; else delete document.documentElement.dataset.theme; });
   $('thrLine').style.left = '50%';
   log('Prototyp gestartet');
