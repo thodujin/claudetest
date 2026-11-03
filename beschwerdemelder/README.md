@@ -90,7 +90,7 @@ Die Leiste unten zeigt jederzeit, **was echt erkannt und was simuliert wird**. D
    - **Licht von vorn**, kein Fenster im Rücken.
    - Kamera auf Augenhöhe.
    - **Kopf anlehnen** und während der Kalibrierung nur die Augen bewegen.
-2. **Kalibrierbereich:** Mit **Bereich mit Maus anpassen** legen Sie fest, wo die Punkte erscheinen.
+2. **Kalibrierbereich:** Er legt sich beim Kalibrieren **automatisch auf die Beschwerdefelder** (Häkchen «Bereich automatisch auf die Felder legen»). So entstehen keine Punkte über leeren Flächen wie der Überschrift. Mit **Bereich mit Maus anpassen** lässt er sich von Hand festlegen, dann ist die Automatik aus.
 3. **Blick kalibrieren:**
    - Die Seite geht in den Vollbildmodus.
    - Es erscheinen 9 oder 13 Punkte. Schauen Sie auf den kleinen Punkt in der Mitte des Rings, bis der Ring grün wird. Punkte mit zu wenig Messwerten werden automatisch wiederholt.

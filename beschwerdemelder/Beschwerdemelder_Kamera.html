@@ -207,15 +207,16 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
           <label for="optDot"><input type="checkbox" id="optDot"> Blickpunkt zeigen</label>
         </div>
         <div class="row">
-          <label for="calTop">Kalibrierbereich oben % <input type="number" id="calTop" min="0" max="45" step="1" value="6"></label>
-          <label for="calBottom">unten % <input type="number" id="calBottom" min="0" max="45" step="1" value="6"></label>
-          <label for="calLeft">links % <input type="number" id="calLeft" min="0" max="45" step="1" value="6"></label>
-          <label for="calRight">rechts % <input type="number" id="calRight" min="0" max="45" step="1" value="6"></label>
+          <label for="calTop">Kalibrierbereich oben % <input type="number" id="calTop" min="0" max="45" step="1" value="18"></label>
+          <label for="calBottom">unten % <input type="number" id="calBottom" min="0" max="45" step="1" value="5"></label>
+          <label for="calLeft">links % <input type="number" id="calLeft" min="0" max="45" step="1" value="5"></label>
+          <label for="calRight">rechts % <input type="number" id="calRight" min="0" max="45" step="1" value="5"></label>
           <button type="button" id="btnArea">Bereich mit Maus anpassen</button>
+          <label for="optAutoArea"><input type="checkbox" id="optAutoArea" checked> Bereich automatisch auf die Felder legen</label>
         </div>
         <div class="row">
-          <label for="smoothMs">Glättung ms <input type="number" id="smoothMs" min="0" max="1500" step="50" value="350"></label>
-          <label for="dwellMs">Markieren nach ms <input type="number" id="dwellMs" min="200" max="2000" step="50" value="700"></label>
+          <label for="smoothMs">Glättung ms <input type="number" id="smoothMs" min="0" max="1500" step="50" value="500"></label>
+          <label for="dwellMs">Markieren nach ms <input type="number" id="dwellMs" min="200" max="2000" step="50" value="900"></label>
         </div>
       </div>
 
@@ -837,6 +838,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     gz.busy = true;
     try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); await sleep(400); } catch (e) { /* Vollbild optional */ }
     if (!(await ensureGazer())) { gz.busy = false; return; }
+    if ($('optAutoArea').checked) applyFieldsArea();
     gz.wg.resume();
     const nPts = Number($('calN').value) === 9 ? 9 : 13;
     const A = area(), X = t => A.x0 + t * (A.x1 - A.x0), Y = t => A.y0 + t * (A.y1 - A.y0);
@@ -969,9 +971,30 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     areaEdit = on; const el = areaEl(); el.classList.toggle('edit', on);
     clearTimeout(areaTimer); placeArea(); el.hidden = !on;
     $('btnArea').textContent = on ? 'Fertig mit Anpassen' : 'Bereich mit Maus anpassen';
+    if (on) $('optAutoArea').checked = false;   // Bereich von Hand: Automatik aus
     if (!on) log(`Kalibrierbereich: oben ${$('calTop').value} %, unten ${$('calBottom').value} %, links ${$('calLeft').value} %, rechts ${$('calRight').value} %`, 'maus');
   }
-  ['calTop', 'calBottom', 'calLeft', 'calRight'].forEach(id => $(id).addEventListener('input', showArea));
+  ['calTop', 'calBottom', 'calLeft', 'calRight'].forEach(id => $(id).addEventListener('input', () => { $('optAutoArea').checked = false; showArea(); }));
+  // Kalibrierbereich = Fläche der Felder auf «Was haben Sie?» bei eingeklappter Steuerung (wie die Testperson sie sieht).
+  // Die Seite wird dafür kurz im Hintergrund aufgebaut und vermessen, dann sofort zurückgestellt (kein sichtbarer Wechsel).
+  function applyFieldsArea() {
+    if (S.test) return false;
+    const prev = { screen: S.screen, focus: S.focus, band: S.band, panel: $('panel').hidden, h: $('console').style.height };
+    S.screen = 'beschwerde'; S.focus = null; $('panel').hidden = true; $('console').style.height = '';
+    render();
+    const rs = [...stage.querySelectorAll('.target')].map(e => e.getBoundingClientRect()).filter(r => r.width && r.height);
+    Object.assign(S, { screen: prev.screen, focus: prev.focus, band: prev.band }); $('panel').hidden = prev.panel; $('console').style.height = prev.h;
+    render();
+    if (!rs.length) return false;
+    // Punkte bis knapp in die äusseren Felder hinein (15 % der Feldgrösse nach innen), nicht über leere Flächen
+    const inX = 0.15 * rs[0].width, inY = 0.15 * rs[0].height;
+    const x0 = (Math.min(...rs.map(r => r.left)) + inX) / innerWidth, x1 = (Math.max(...rs.map(r => r.right)) - inX) / innerWidth;
+    const y0 = (Math.min(...rs.map(r => r.top)) + inY) / innerHeight, y1 = (Math.max(...rs.map(r => r.bottom)) - inY) / innerHeight;
+    const pc = v => Math.max(0, Math.min(45, Math.round(v * 100)));
+    $('calLeft').value = pc(x0); $('calRight').value = pc(1 - x1); $('calTop').value = pc(y0); $('calBottom').value = pc(1 - y1);
+    log(`Kalibrierbereich automatisch auf die Felder gelegt: oben ${$('calTop').value} %, unten ${$('calBottom').value} %, links ${$('calLeft').value} %, rechts ${$('calRight').value} %`);
+    return true;
+  }
   $('btnArea').addEventListener('click', () => setAreaEdit(!areaEdit));
   $('btnCenter').addEventListener('click', recenter);
   stage.addEventListener('click', e => {

@@ -88,6 +88,11 @@ Für die Patientengruppe ist B8 besonders relevant. Wer auf der Intensivstation 
 - **Massnahme «Zurücknehmen»:** Das Feld hat wieder normale Grösse und liegt unten. Es wird nur markiert, wenn man es bewusst anschaut.
 - **Folgerung für das Design:** «Gross» ist nicht immer besser. Bei einem einzelnen Feld mit Folgen, das nicht gewählt werden soll, verhindert eine kleinere Zielfläche ungewolltes Auslösen.
 
+### M6 – Kalibrierbereich und Standardwerte
+
+- **Automatischer Bereich:** Der Kalibrierbereich legt sich automatisch auf die Fläche der Beschwerdefelder, so wie die Testperson sie mit eingeklappter Steuerung sieht. Vorher lagen Punkte auch über der Überschrift, wo es nichts zu wählen gibt.
+- **Neue Standardwerte:** 13 Punkte, «Markieren nach» 900 ms statt 700 (seltener ein Sprung auf ein falsches Feld, wenn der Blickpunkt wackelt), «Glättung» 500 ms statt 350 (ruhigerer Blickpunkt).
+
 ## Kennwerte für den nächsten Test (bitte eintragen)
 
 | Durchgang | Abweichung gesamt | horizontal | vertikal | nach Korrektur | Bemerkung (Licht, Brille, Abstand) |
