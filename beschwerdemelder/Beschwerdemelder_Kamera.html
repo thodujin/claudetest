@@ -842,8 +842,21 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     gz.wg.resume();
     const nPts = Number($('calN').value) === 9 ? 9 : 13;
     const A = area(), X = t => A.x0 + t * (A.x1 - A.x0), Y = t => A.y0 + t * (A.y1 - A.y0);
-    const pts = []; [0, 0.5, 1].forEach(v => [0, 0.5, 1].forEach(u => pts.push([X(u), Y(v)])));
-    if (nPts === 13) pts.push([X(0.25), Y(0.25)], [X(0.75), Y(0.25)], [X(0.25), Y(0.75)], [X(0.75), Y(0.75)]);
+    const FP = $('optAutoArea').checked && gz.fieldPts ? gz.fieldPts : null;
+    const mid = (a, b) => (a + b) / 2;
+    let pts = [], vpts;
+    if (FP) {
+      // auf jede Spalte × jede Reihe (obere, untere Beschwerdereihe, Zurück/Abbrechen) einen Punkt
+      const { xs, ys } = FP, n = xs.length, m = ys.length;
+      ys.forEach(y => xs.forEach(x => pts.push([x, y])));
+      if (nPts === 13) for (let i = 0; i < m - 1 && pts.length < 13; i++) pts.push([mid(xs[0], xs[1]), mid(ys[i], ys[i + 1])], [mid(xs[n - 2], xs[n - 1]), mid(ys[i], ys[i + 1])]);
+      // Kontrolle: drei neue Punkte, je einer pro Reihe (obere, untere Beschwerdereihe, Zurück/Abbrechen)
+      vpts = [[mid(xs[0], xs[1]), ys[0]], [mid(xs[n - 2], xs[n - 1]), ys[Math.min(1, m - 1)]], [mid(xs[0], xs[1]), ys[m - 1]]];
+    } else {
+      [0, 0.5, 1].forEach(v => [0, 0.5, 1].forEach(u => pts.push([X(u), Y(v)])));
+      if (nPts === 13) pts.push([X(0.25), Y(0.25)], [X(0.75), Y(0.25)], [X(0.25), Y(0.75)], [X(0.75), Y(0.75)]);
+      vpts = [[X(0.35), Y(0.4)], [X(0.68), Y(0.62)], [X(0.5), Y(0.15)]];
+    }
     const cancel = box => { box.remove(); gz.busy = false; resetModel(); gz.calibrated = false; $('camNote').textContent = 'Kalibrierung abgebrochen (Esc). Blick per Kamera ist aus.'; $('optGaze').checked = false; log('Kalibrierung abgebrochen (Esc)', 'wiz'); status(); };
 
     for (let attempt = 1; ; attempt++) {
@@ -870,7 +883,6 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       }
       // Kontrolle an 3 neuen Punkten auf verschiedenen Höhen, die nicht kalibriert wurden
       box.querySelector('p').textContent = 'Kontrolle: noch drei Punkte anschauen.';
-      const vpts = [[X(0.35), Y(0.4)], [X(0.68), Y(0.62)], [X(0.5), Y(0.15)]];
       const ests = [];
       for (let j = 0; j < vpts.length; j++) {
         ests.push(await atPoint(box, vpts[j][0], vpts[j][1], `Kontrolle ${j + 1} von 3`, () => collect(1500)));
@@ -888,7 +900,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
         : ph <= 13 && pv <= 18 ? 'brauchbar für drei Felder nebeneinander, bei den Zahlen knapp.'
         : 'zu ungenau. Licht von vorn, Kopf ruhiger (anlehnen), Abstand 50–70 cm, dann neu kalibrieren.';
       const text = `<b>Mittlere Abweichung ${pct} %</b> der Bildschirmgrösse (horizontal ${ph} %, vertikal ${pv} %). Nach Korrektur der Verschiebung etwa ${rest} %.<br>${verdict}${weak.length ? ` ${weak.length} Punkt(e) wurden wiederholt.` : ''}`;
-      log(`Blick kalibriert (Versuch ${attempt}), WebGazer, ${pts.length} Punkte (${weak.length} wiederholt), Fenster ${innerWidth}×${innerHeight}, Bereich oben ${Math.round(A.y0 * 100)} % unten ${Math.round((1 - A.y1) * 100)} % links ${Math.round(A.x0 * 100)} % rechts ${Math.round((1 - A.x1) * 100)} %. Kontrolle: mittlere Abweichung ${pct} % (horizontal ${ph} %, vertikal ${pv} %), Verschiebung x ${Math.round(bx * 100)} % y ${Math.round(by * 100)} %, nach Korrektur ${rest} %`, 'cam');
+      log(`Blick kalibriert (Versuch ${attempt}), WebGazer, ${pts.length} Punkte (${weak.length} wiederholt), Fenster ${innerWidth}×${innerHeight}, ${FP ? 'Punkte auf den Feldmitten' : 'Punkte im Raster'}, Bereich oben ${Math.round(A.y0 * 100)} % unten ${Math.round((1 - A.y1) * 100)} % links ${Math.round(A.x0 * 100)} % rechts ${Math.round((1 - A.x1) * 100)} %. Kontrolle: mittlere Abweichung ${pct} % (horizontal ${ph} %, vertikal ${pv} %), Verschiebung x ${Math.round(bx * 100)} % y ${Math.round(by * 100)} %, nach Korrektur ${rest} %`, 'cam');
       const choice = await showResult(box, vpts, ests, text);
       gz.onEsc = null; box.remove();
       if (choice === 'redo') { log('Neu kalibrieren gewählt', 'wiz'); continue; }
@@ -982,7 +994,14 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     const prev = { screen: S.screen, focus: S.focus, band: S.band, panel: $('panel').hidden, h: $('console').style.height };
     S.screen = 'beschwerde'; S.focus = null; $('panel').hidden = true; $('console').style.height = '';
     render();
-    const rs = [...stage.querySelectorAll('.target')].map(e => e.getBoundingClientRect()).filter(r => r.width && r.height);
+    const info = [...stage.querySelectorAll('.target')].map(e => ({ k: e.dataset.k, r: e.getBoundingClientRect() })).filter(i => i.r.width && i.r.height);
+    const rs = info.map(i => i.r);
+    // Mitten der Spalten und Reihen merken: Kalibrierpunkte sollen auf den Feldern liegen, nicht auf den Fugen dazwischen
+    const uniq = a => [...new Set(a.map(v => Math.round(v)))].sort((p, q) => p - q);
+    const comp = info.filter(i => COMPLAINTS.some(c => c.id === i.k)), utl = info.filter(i => i.k === 'zurueck' || i.k === 'abbrechen');
+    const xs = uniq(comp.map(i => i.r.left + i.r.width / 2)).map(v => v / innerWidth);
+    const ys = uniq(comp.map(i => i.r.top + i.r.height / 2)).concat(utl.length ? [Math.round(utl[0].r.top + utl[0].r.height / 2)] : []).map(v => v / innerHeight);
+    gz.fieldPts = xs.length >= 2 && ys.length >= 2 ? { xs, ys } : null;
     Object.assign(S, { screen: prev.screen, focus: prev.focus, band: prev.band }); $('panel').hidden = prev.panel; $('console').style.height = prev.h;
     render();
     if (!rs.length) return false;

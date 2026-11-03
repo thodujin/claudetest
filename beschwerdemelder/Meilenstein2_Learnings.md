@@ -93,6 +93,14 @@ Für die Patientengruppe ist B8 besonders relevant. Wer auf der Intensivstation 
 - **Automatischer Bereich:** Der Kalibrierbereich legt sich automatisch auf die Fläche der Beschwerdefelder, so wie die Testperson sie mit eingeklappter Steuerung sieht. Vorher lagen Punkte auch über der Überschrift, wo es nichts zu wählen gibt.
 - **Neue Standardwerte:** 13 Punkte, «Markieren nach» 900 ms statt 700 (seltener ein Sprung auf ein falsches Feld, wenn der Blickpunkt wackelt), «Glättung» 500 ms statt 350 (ruhigerer Blickpunkt).
 
+### M7 – Kalibrierpunkte auf den Feldmitten (aus B10)
+
+- **Befund B10:** Die untere Beschwerdereihe (Durst, Hunger, Unbequeme Lage) ist manchmal schwierig zu wählen.
+- **Ursache 1 (gefunden):** Die Kalibrierpunkte lagen in einem gleichmässigen Raster. Die mittlere Punktreihe fiel dabei auf die Fuge zwischen den beiden Beschwerdereihen. Auf Höhe von Durst/Hunger/Lage gab es keinen Kalibrierpunkt.
+- **Ursache 2 (vermutet):** Die Reihe hat Nachbarn oben und unten, eine vertikale Ungenauigkeit (B3) wirkt sich also in beide Richtungen aus.
+- **Massnahme:** Bei automatischem Bereich liegt je ein Kalibrierpunkt auf jeder Spalte und jeder Reihe: obere Reihe, untere Reihe, Zurück/Abbrechen. Die 4 Zusatzpunkte liegen dazwischen. Die 3 Kontrollpunkte liegen je einer pro Reihe, so misst die Kontrolle die untere Reihe gezielt mit.
+- **Weitere Option, falls B10 bleibt:** Zurück und Abbrechen an die Seiten statt nach unten. Dann hätte die untere Beschwerdereihe nur noch einen vertikalen Nachbarn.
+
 ## Kennwerte für den nächsten Test (bitte eintragen)
 
 | Durchgang | Abweichung gesamt | horizontal | vertikal | nach Korrektur | Bemerkung (Licht, Brille, Abstand) |
