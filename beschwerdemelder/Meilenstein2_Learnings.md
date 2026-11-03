@@ -6,7 +6,7 @@ Testprototyp für Gesunde, kein Medizinprodukt. Stand: 3. November 2026 (iterati
 
 **Vorgehen:** iterative Selbsttests durch das Projektteam (n = 1) an zwei Tagen. Nach jeder Runde folgte eine Anpassung am Prototyp (M1–M9). Die Befunde sind qualitative Beobachtungen und geben die Richtung vor. Belegt sind sie erst nach Tests mit weiteren Personen.
 
-### Sieben Gestaltungsprinzipien aus den Befunden
+### Gestaltungsprinzipien aus den Befunden
 
 | # | Prinzip | Abgeleitet aus | Umgesetzt in |
 |---|---|---|---|
@@ -16,12 +16,14 @@ Testprototyp für Gesunde, kein Medizinprodukt. Stand: 3. November 2026 (iterati
 | P4 | **Sicherheit vor Tempo.** Folgenreiche Felder sind nie vormarkiert («Senden», «Zurücknehmen»). Ein einzelnes übergrosses Feld ist per Blick dauernd markiert und löst leicht ungewollt aus, «gross» ist also nicht immer besser. | B9 | M4, M5 |
 | P5 | **Die Kalibrierung muss zur Oberfläche passen.** Punkte gehören auf die Felder und an den Rand des Bereichs, nicht in ein neutrales Raster. Das Ergebnis muss sichtbar und messbar sein. | B1, B5, B10, B11 | M2, M6, M7, M8 |
 | P6 | **Rahmenbedingungen gehören zum System.** Licht, Abstand, Kopfhaltung und Tagesform bestimmen die Genauigkeit stärker als die Software. Darum vor jeder Nutzung neu kalibrieren, mit Nachjustieren (C) und Abtastmodus als Rückfallebene. | B5, B13 | M2, M6, Anleitung |
+| P8 | **Das einfachste Verfahren kann das bessere sein.** Der Abtastmodus (Felder leuchten nacheinander auf, langes Blinzeln wählt) wirkte entspannter und angenehmer als die Blicksteuerung: keine Kalibrierung, kein Fixieren, keine Ungenauigkeit oben/unten. Dafür ist er langsamer. | B14 | Abtastmodus als gleichwertige Option prüfen, nicht nur als Notlösung |
 | P7 | **Jeder Schritt kostet Kraft.** Langes Blinzeln und Fixieren ermüden die Augen. Jeder zusätzliche Schritt (z. B. die Gruppenwahl) muss sich durch weniger Fehlwahlen lohnen. | B8 | Zielkonflikt mit P3, zu messen |
 
 ### Zielkonflikte, die der Report benennen sollte
 
 - **Genauigkeit gegen Aufwand:** Zweistufige Auswahl (P1–P3) bedeutet weniger Fehlwahlen, aber ein langes Blinzeln mehr pro Meldung (P7). Atemnot als dringendste Beschwerde braucht jetzt einen Schritt mehr.
 - **Grösse gegen Sicherheit:** Grosse Felder sind leichter zu treffen, aber auch leichter ungewollt zu treffen (P4).
+- **Tempo gegen Entspannung:** Die Blicksteuerung ist schneller, verlangt aber Kalibrierung, Fixieren und einen ruhigen Kopf. Der Abtastmodus ist langsamer, aber entspannter (B14). Für erschöpfte Patientinnen und Patienten zählt die Entspannung womöglich mehr als das Tempo.
 - **Bewegungsfreiheit gegen Genauigkeit:** Die Blicksteuerung braucht einen ruhigen Kopf. Für Patientinnen und Patienten im Bett ist das schwer einzuhalten.
 
 ### Grenzen der bisherigen Erkenntnisse
@@ -166,6 +168,18 @@ Für die Patientengruppe ist B8 besonders relevant. Wer auf der Intensivstation 
 - **Mögliche Ursachen (ungeprüft):** anderes Licht, andere Sitzposition oder anderer Kamerawinkel, müde Augen (vgl. B8), Kopfbewegung während der Kalibrierung, Zufall bei nur 3 Kontrollpunkten.
 - **Folgerung für das Design:** Eine einmalige Kalibrierung reicht nicht. Vor jeder Nutzung neu kalibrieren, Ergebnis prüfen (Übernehmen / Neu kalibrieren), bei Bedarf C oder Abtastmodus. Auf der Intensivstation ist mit noch stärkeren Schwankungen zu rechnen: Licht, Lagerung, Erschöpfung.
 
+### B14 – Abtastmodus wirkt entspannter als die Blicksteuerung
+
+- **Befund:** Im Selbsttest wirkte der Abtastmodus deutlich entspannter und angenehmer als die Steuerung mit dem Blick.
+- **Mögliche Gründe:**
+  - keine Kalibrierung und keine Schwankung zwischen Sitzungen (B13)
+  - kein aktives Fixieren, also vermutlich weniger Augenermüdung (B8)
+  - keine Probleme mit vertikaler Ungenauigkeit (B3, B10–B12)
+  - die Person muss nur im richtigen Moment blinzeln, nicht aktiv steuern
+- **Preis:** Es ist langsamer. Bei 2 s pro Feld wartet man je nach Position bis zu etwa 10 s pro Schritt. Durch die zweistufige Auswahl mit wenigen Feldern (M1, M9) bleibt die Wartezeit aber begrenzt.
+- **Folgerung für das Design:** Den Abtastmodus nicht nur als Notlösung bei Gesichtsverlust behandeln, sondern als **gleichwertige Bedienart** prüfen, eventuell als Standard für erschöpfte Personen. Denkbar ist auch eine Kombination: Abtasten als Grundmodus, Blick als schnellere Option für Personen, bei denen er gut funktioniert.
+- **Zu prüfen:** Vergleich Blick gegen Abtasten bei denselben Aufgaben. Gemessen werden Dauer, Fehlwahlen, Augenmüdigkeit (0–10) und welche Bedienart die Person bevorzugt. Wichtig ist auch, ob 2 s pro Feld passen oder zu schnell bzw. zu langsam sind.
+
 ## Kennwerte für den nächsten Test (bitte eintragen)
 
 | Durchgang | Abweichung gesamt | horizontal | vertikal | nach Korrektur | Bemerkung (Licht, Brille, Abstand) |
@@ -184,4 +198,5 @@ Die Werte stehen nach jeder Kalibrierung unter «Kamera» und im exportierten Pr
 5. **Augenermüdung (B8) messen:** Nach jedem Durchgang die Ermüdung erfragen, zum Beispiel auf einer Skala von 0 bis 10 («Wie müde sind Ihre Augen?»), und notieren, nach wie vielen Meldungen sie spürbar wird. Wie viele lange Blinzeln und wie viel Zeit eine Meldung braucht, steht im exportierten Protokoll (Bilanz pro Durchgang).
 6. **Massnahmen gegen Ermüdung vergleichen:** kürzere Mindestdauer für langes Blinzeln (zum Beispiel 600 statt 800 ms), weniger Schritte pro Meldung, dunkler Modus gegen Blendung, Kalibrierung mit 9 statt 13 Punkten, Pausen zwischen den Durchgängen.
 7. Wie lange dauert ein ganzer Durchgang von «Ruhe» bis «Gesendet» mit «6 Felder» im Vergleich zu «2 Gruppen à 3»? Das lässt sich aus den Zeitstempeln im Protokoll ablesen.
+9. **Blick gegen Abtasten (B14):** Welche Bedienart bevorzugen die Testpersonen? Wie unterscheiden sich Dauer, Fehlwahlen und Augenmüdigkeit? Passt das Tempo von 2 s pro Feld?
 8. Sind die Gruppennamen «Körper» und «Bedürfnisse» verständlich? Findet man die gesuchte Beschwerde auf Anhieb in der richtigen Gruppe?
