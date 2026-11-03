@@ -42,7 +42,8 @@ Ruhe ──langes Blinzeln──▶ Beschwerde ──▶ Stärke: Bereich ──
 - **Im Ruhezustand** reagiert das System nicht auf den Blick, nur auf langes Blinzeln.
 - **In jedem aktiven Zustand** gibt es «Zurück» und «Abbrechen». **Abbrechen sendet nie etwas.**
 - **Auf «Stimmt das?»** ist beim Erscheinen nichts markiert. Gesendet wird nur, wenn «Senden» angeschaut und dann lang geblinzelt wird.
-- **Nach dem Senden** kann die Meldung zurückgenommen werden, bis die Pflege quittiert.
+- **Nach dem Senden** kann die Meldung zurückgenommen werden, bis die Pflege quittiert. «Zurücknehmen» ist bewusst nicht vormarkiert und nicht übergross, damit ein langes Blinzeln beim Warten die Meldung nicht versehentlich zurücknimmt.
+- **Pflege simuliert:** Für Tests ohne Testleitung quittiert die Pflege automatisch nach 10 s (einstellbar unter «Wizard und Ablauf», abschaltbar). Im Protokoll steht das als «automatisch, simuliert». Mit `Q` quittiert die Testleitung sofort.
 
 ## Bedienung
 
@@ -70,7 +71,7 @@ Die Tasten funktionieren immer, auch ohne Kamera.
 | `P` | Pause ein/aus |
 | `A` | Abtastmodus: Felder leuchten alle 2 s nacheinander auf, langes Blinzeln wählt. Braucht keinen Blick. |
 | `F` | simulierter Fehler: Markierung springt aufs Nachbarfeld |
-| `Q` | Pflege quittiert |
+| `Q` | Pflege quittiert (sofort; sonst automatisch nach 10 s, falls eingeschaltet) |
 | `N` | Pflegeansicht |
 | `R` | neuer Durchgang |
 | `W` | Steuerung ein/aus (für die Testperson einklappen, dann werden die Felder grösser) |

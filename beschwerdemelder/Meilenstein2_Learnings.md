@@ -80,6 +80,14 @@ Für die Patientengruppe ist B8 besonders relevant. Wer auf der Intensivstation 
 - **Keine Übergangsanimationen mehr:** Es bleibt nur die kurze grüne Bestätigung beim Wählen.
 - **Kein Überlappen:** Bei kleinem Fenster oder aufgeklappter Steuerung überlappen sich Felder nicht mehr, die Seite scrollt stattdessen.
 
+### M5 – Wartezeit nach dem Senden (dritter Selbsttest)
+
+- **Befund B9:** Die Anzeige «Gesendet» bleibt zu lange stehen. Ohne Testleitung quittiert niemand, und der Ablauf hängt.
+- **Massnahme Pflege-Simulation:** Für Tests ohne Testleitung quittiert die Pflege automatisch nach 10 s. Die Zeit ist einstellbar, die Automatik abschaltbar. Im Protokoll steht die Quittung als simuliert.
+- **Befund zu «Zurücknehmen»:** Als einziges und sehr grosses Feld war «Zurücknehmen» per Blick praktisch dauernd markiert. Ein längeres Augenschliessen beim Warten hätte die Meldung ungewollt zurückgenommen.
+- **Massnahme «Zurücknehmen»:** Das Feld hat wieder normale Grösse und liegt unten. Es wird nur markiert, wenn man es bewusst anschaut.
+- **Folgerung für das Design:** «Gross» ist nicht immer besser. Bei einem einzelnen Feld mit Folgen, das nicht gewählt werden soll, verhindert eine kleinere Zielfläche ungewolltes Auslösen.
+
 ## Kennwerte für den nächsten Test (bitte eintragen)
 
 | Durchgang | Abweichung gesamt | horizontal | vertikal | nach Korrektur | Bemerkung (Licht, Brille, Abstand) |

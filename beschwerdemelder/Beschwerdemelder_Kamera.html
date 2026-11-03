@@ -234,6 +234,10 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
           <button type="button" data-act="help"><kbd>H</kbd>Anleitung</button>
         </div>
         <div class="hint" id="hint" hidden></div>
+        <div class="row">
+          <label for="optAutoAck"><input type="checkbox" id="optAutoAck" checked> Pflege quittiert automatisch nach</label>
+          <label for="autoAckS"><input type="number" id="autoAckS" min="2" max="120" step="1" value="10"> s (für Tests ohne Testleitung)</label>
+        </div>
         <h3>Technischer Vorabtest</h3>
         <div class="row">
           <button type="button" id="btnFree">Freies Schauen 2 Min</button>
@@ -312,7 +316,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   const messages = [], logLines = [];
   const $ = id => document.getElementById(id);
   const stage = $('stage');
-  let scanTimer = null, backTimer = null;
+  let scanTimer = null, backTimer = null, ackTimer = null;
 
   const pad = n => String(n).padStart(2, '0');
   const clock = () => { const d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
@@ -365,7 +369,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
         <div class="summary">${ICON[S.complaint]}<div><div class="what">${cname(S.complaint)}</div><div class="how">Stärke ${S.level} von 10 · <span class="bandtag" style="color:var(--b-${bandOf(S.level).id})">${bandOf(S.level).label}</span></div></div></div>${util(['senden', 'zurueck', 'abbrechen'], 'big')}`;
     } else if (S.screen === 'gesendet') {
       const m = S.lastMsg;
-      h = `<div class="rest ok"><div><p class="big">Gesendet: ${cname(m.complaint)}, ${m.level} von 10</p><p class="sub">Die Pflege ist informiert. Bitte warten.</p></div></div>${targets().length ? util(['zuruecknehmen'], 'big') : ''}`;
+      h = `<div class="rest ok"><div><p class="big">Gesendet: ${cname(m.complaint)}, ${m.level} von 10</p><p class="sub">Die Pflege ist informiert. Bitte warten.</p></div></div>${targets().length ? util(['zuruecknehmen']) : ''}`;   // bewusst nicht gross: sonst ist es per Blick fast immer markiert
     } else if (S.screen === 'kommt') {
       h = `<div class="rest ok"><div><p class="big">Die Pflege kommt.</p><p class="sub">${cname(S.lastMsg.complaint)}, ${S.lastMsg.level} von 10</p></div></div>`;
     } else if (S.screen === 'zurueckgenommen') {
@@ -410,7 +414,8 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
       : 'Markierung: Wizard (Pfeiltasten) – Blick wird simuliert';
     const pauseTxt = camOn && $('optPause').checked ? 'Pause: Kamera (echt) oder P' : 'Pause: Wizard (P)';
     const simTxt = S.cnt.sim ? ` · simulierte Fehler in D${S.run}: ${S.cnt.sim}` : '';
-    $('disclose').textContent = `${blinkTxt} · ${markTxt} · ${pauseTxt}${simTxt}`;
+    const ackTxt = $('optAutoAck').checked ? `Pflege: automatisch nach ${Math.max(2, Math.round(num('autoAckS', 10)))} s (simuliert) oder Q` : 'Pflege: Wizard (Q)';
+    $('disclose').textContent = `${blinkTxt} · ${markTxt} · ${pauseTxt} · ${ackTxt}${simTxt}`;
   }
 
   function go(screen, focus = null) {
@@ -460,9 +465,10 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
         if (k === 'zurueck') { S.band = bandOf(S.level); return go('staerke', S.level - S.band.from); }
         const m = { id: messages.length + 1, complaint: S.complaint, level: S.level, time: clock(), room: $('room').value.trim(), bed: $('bed').value.trim(), ack: false, withdrawn: false };
         messages.push(m); S.lastMsg = m; log(`Gesendet: ${cname(m.complaint)} ${m.level}/10 (${bandOf(m.level).label})`);
+        startAutoAck(m);
         return go('gesendet');
       }
-      if (S.screen === 'gesendet' && k === 'zuruecknehmen') { S.lastMsg.withdrawn = true; log('Meldung zurückgenommen, Pflegeansicht aktualisiert'); settle('zurueckgenommen', 3000); }
+      if (S.screen === 'gesendet' && k === 'zuruecknehmen') { S.lastMsg.withdrawn = true; clearTimeout(ackTimer); log('Meldung zurückgenommen, Pflegeansicht aktualisiert'); settle('zurueckgenommen', 3000); }
     });
   }
 
@@ -514,8 +520,16 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     log(`Markierung springt ${from} → ${tgtLabel(targets()[S.focus])}`, 'sim');
     paintFocus(); status();
   }
-  function ackMsg(m, src) {
-    m.ack = true; log(`Pflege quittiert: ${cname(m.complaint)} ${m.level}/10`, src);
+  // Simulierte Pflege für Tests ohne Testleitung: quittiert nach einstellbarer Zeit (im Protokoll als simuliert vermerkt)
+  function startAutoAck(m) {
+    clearTimeout(ackTimer);
+    if (!$('optAutoAck').checked) return;
+    const sec = Math.max(2, Math.round(num('autoAckS', 10)));
+    ackTimer = setTimeout(() => { if (!m.ack && !m.withdrawn) ackMsg(m, 'sys', ` (automatisch nach ${sec} s, simuliert)`); }, sec * 1000);
+  }
+  function ackMsg(m, src, note = '') {
+    clearTimeout(ackTimer);
+    m.ack = true; log(`Pflege quittiert: ${cname(m.complaint)} ${m.level}/10${note}`, src);
     if (S.lastMsg === m && S.screen === 'gesendet') settle('kommt', 6000); else renderNurse();
   }
   function ack(src = 'wiz') { const m = [...messages].reverse().find(x => !x.ack && !x.withdrawn); if (!m) { log('Quittieren: keine offene Meldung', src); return; } ackMsg(m, src); }
@@ -524,7 +538,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
     return `Bilanz D${S.run}: Kamera lang ${c.long} · kurz verworfen ${c.short} · zu lang ${c.tooLong} · Gesicht weg ${c.gone} · Wizard-Blinzeln ${c.wiz} · Mausklicks ${c.maus} · simulierte Fehler ${c.sim} · Pausen ${S.pauseCount}`;
   }
   function reset() {
-    clearTimeout(backTimer); if (S.scan) toggleScan();
+    clearTimeout(backTimer); clearTimeout(ackTimer); if (S.scan) toggleScan();
     log(runSummary());
     S.run++; S.runStart = Date.now(); S.pauseCount = 0; S.paused = false; S.pausedBy = null; S.complaint = null; S.level = null; S.band = null; S.cnt = newCnt();
     log('Neuer Durchgang', 'wiz'); go('ruhe');
@@ -1081,6 +1095,7 @@ video { width: 160px; border-radius: 8px; transform: scaleX(-1); background: #00
   })();
 
   // Farbmodus nur für diese Sitzung (nichts wird gespeichert)
+  $('autoAckS').addEventListener('input', status);
   $('theme').addEventListener('change', e => { if (e.target.value) document.documentElement.dataset.theme = e.target.value; else delete document.documentElement.dataset.theme; });
   $('thrLine').style.left = '50%';
   log('Prototyp gestartet');
